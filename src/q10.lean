@@ -61,17 +61,68 @@ def small_primes : List ℕ := filter' (List.range' 2 1499) [2, 3, 5, 7, 11, 13,
 
 -----------------------------------------------------------------------------------------
 
-open Array
+open Array Std.RBMap
 
 -- Array implementation - Apparently arrays have builtin VM implementation, so it should be faster
 def prime_sieve (n : ℕ) : Array ℕ := Id.run do
   let mut primes : Array ℕ := Array.empty
   let mut isp : Array Bool := Array.mkArray (n + 1) true
-  for i in [2 : n] do
+  for i in [2 : n + 1] do
     if isp[i]! then
       primes ← primes.push i
       for j in [i : n : i] do
         isp ← isp.modify j (λ _ => false)
   return primes
 
-#eval (prime_sieve 2000000).toList.sum
+-- 7.25s
+-- #eval (prime_sieve 2000000).toList.sum
+
+-----------------------------------------------------------------------------------------
+
+def linear_prime_sieve (n : ℕ) : Array ℕ := Id.run do
+  let mut primes : Array ℕ := Array.empty
+  let mut isp : Array Bool := Array.mkArray (n + 1) true
+  for i in [2 : n + 1] do
+    if isp[i]! then
+      primes ← primes.push i
+    for j in [: primes.size] do
+      if i * primes[j]! > n then
+        break
+      isp ← isp.modify (i * primes[j]!) (λ _ => false)
+      if i % primes[j]! = 0 then
+        break
+  return primes
+
+-- 5.8s
+-- #eval (linear_prime_sieve 2000000).toList.sum
+
+-----------------------------------------------------------------------------------------
+
+-- Project Euler, Problem 10 forum, Lucy_Hedgehog
+def lucy_hedgehog (n : ℕ) : ℕ := Id.run do
+  let r := n.sqrt
+  let mut V := Array.empty
+  let mut S := Std.HashMap.empty
+  for i in [1 : r + 1] do
+    V ← V.push (n / i)
+  let f := n / r
+  for i in [1 : f] do
+    V ← V.push (f - i)
+  for k in V do
+    S ← S.insert k (k * (k + 1) / 2 - 1)
+  for p in [2 : r + 1] do
+    if S.find! p > S.find! (p - 1) then
+      let sp := S.find! (p - 1)
+      let p2 := p ^ 2
+      for v in V do
+        if v < p2 then
+          break
+        S ← S.insert v (S.find! v - p * (S.find! (v / p) - sp))
+  return S.find! n
+
+#eval lucy_hedgehog 2000000
+#eval lucy_hedgehog 20000000
+-- n = 10^8, 5.21sec
+#eval lucy_hedgehog 100000000
+
+example : lucy_hedgehog 100 = 1060 := sorry

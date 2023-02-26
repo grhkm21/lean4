@@ -7,8 +7,3 @@ package «lean4» {
 
 require mathlib from git
   "https://github.com/leanprover-community/mathlib4.git"
-
-@[default_target]
-lean_lib «Lean4» {
-  -- add any library configuration options here
-}
