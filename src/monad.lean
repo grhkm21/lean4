@@ -97,3 +97,5 @@ theorem ff' : ff n = n := by
   conv_rhs => rw [← hk, Nat.succ_eq_add_one, h]
 
 example : ff 5 = 5 := ff'
+
+#eval Id.run $ Std.Range.forIn { start := 0, stop := 200, step := 0 } 5 incStep
