@@ -13,11 +13,6 @@ def incStep : ℕ → ℕ → Id (ForInStep ℕ) := λ _ r => ForInStep.yield (r
 
 variable {m : Type u → Type v} [Monad m]
 
-def extractStep (s : ForInStep β) : m β :=
-  match s with
-    | ForInStep.done b => pure b
-    | ForInStep.yield b => pure b
-
 #print loop
 -- loop f start stop 1 init (Nat.zero_lt_one) = init
 theorem singleIncStep {k : ℕ} : STD.forIn (mkRange' k k.succ) init incStep = init + 1 := by
@@ -46,7 +41,7 @@ theorem succInvariantLt {k : ℕ} {init : β} {f : ℕ → β → Id (ForInStep 
   rw [hk]
   induction' k with t ht
   simp [emptyStep]
-  
+
   sorry
 
 theorem succInvariant {k : ℕ} {init : β} {f : ℕ → β → Id (ForInStep β)} (start stop skip : ℕ)
@@ -93,3 +88,40 @@ def fff (n : ℕ) : ℕ := Id.run do
     r ← r + 1
   return r
 #eval fff 5
+
+/-
+**Test Functions**
+
+Below are a bunch of test functions to ensure correctness - I hope.
+-/
+def f1 (n : ℕ) : ℕ := Id.run do
+  let mut r := 0
+  for i in [: 2 * n] do
+    if i % 2 = 0 then
+      continue
+    if i = 2 * n then
+      break
+    r ← r + i
+  return r
+
+/-
+forIn RANGE r fun i r =>
+  let r := r;
+  let __do_jp := fun r y =>
+    let __do_jp := fun r y => do
+      let r ← r + i
+      let r : ℕ := r
+      pure PUnit.unit
+      pure (ForInStep.yield r);
+    if i = 2 * n then pure (ForInStep.done r) -- `break`
+    else do
+      let y ← pure PUnit.unit
+      __do_jp r y;
+  if i % 2 = 0 then pure (ForInStep.yield r)  -- `continue`
+  else do
+    let y ← pure PUnit.unit
+    __do_jp r y
+-/
+
+#print f1
+#eval f1 50

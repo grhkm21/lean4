@@ -1,36 +1,46 @@
 import Mathlib.Data.Nat.Basic
 
-namespace STD
-
-structure Range where
-  start : Nat := 0
-  stop  : Nat
-  step  : Nat := 1
-
 /-
-Setup notation
+A summary of this file (27 Feb 2023):
+* Rewrite `Std.Range.forIn` to remove `fuel` variable
+* Change the result of a for-range loop with `step := 0` to do nothing
+  * It used to run the loop `stop - start` times, which makes no sense
+* Add some results about internals of Range and For to aid proofs
 -/
 
-syntax : max (name := Range1) "[" withoutPosition(":" term) "]" : term
-syntax : max (name := Range2) "[" withoutPosition(term ":" term) "]" : term
-syntax : max (name := Range3) "[" withoutPosition(":" term ":" term) "]" : term
-syntax : max (name := Range4) "[" withoutPosition(term ":" term ":" term) "]" : term
+open Std Std.Range
 
-macro_rules (kind := Range1)
-  | `([ : $stop]) => `({ stop := $stop : Range })
-macro_rules (kind := Range2)
-  | `([ $start : $stop ]) => `({ start := $start, stop := $stop : Range })
-macro_rules (kind := Range3)
-  | `([ : $stop : $step ]) => `({ stop := $stop, step := $step : Range })
-macro_rules (kind := Range4)
-  | `([ $start : $stop : $step ]) => `({ start := $start, stop := $stop, step := $step : Range })
+variable {β : Type u} {m : Type u → Type v} [Monad m]
 
 def mkRange (start stop step : ℕ) : Range := { start := start, stop := stop, step := step }
 
 def mkRange' (start stop : ℕ) : Range := { start := start, stop := stop }
 
+def ForInStep.isDone (range : ForInStep β) : Bool :=
+match range with
+| .done _ => true
+| _ => false
+
+def ForInStep.isYield (range : ForInStep β) : Bool :=
+match range with
+| .yield _ => true
+| _ => false
+
+def ForInStep.extractStep (s : ForInStep β) : m β :=
+  match s with
+    | ForInStep.done b => pure b
+    | ForInStep.yield b => pure b
+
+theorem ForInStep.isDoneOrIsYield (range : ForInStep β) : range.isDone ∨ range.isYield := by
+  cases range <;> simp [isDone, isYield]
+
+theorem ForInStep.notIsDoneAndIsYield (range : ForInStep β) : ¬(range.isDone ∧ range.isYield) := by
+  cases range <;> simp [isDone, isYield]
+
+namespace STD
+
 -- Syntax: `loop f i stop step b hs`
-def loop {β : Type u} {m : Type u → Type v} [Monad m] (f : Nat → β → m (ForInStep β))
+def loop (f : Nat → β → m (ForInStep β))
   (i stop step : Nat) (b : β) (hs : 0 < step) : m β := do
   if h : stop ≤ i then
     return b
@@ -45,7 +55,7 @@ def loop {β : Type u} {m : Type u → Type v} [Monad m] (f : Nat → β → m (
   termination_by _ => stop - i
 
 -- Syntax: `forIn range init f`
-protected def forIn {β : Type u} {m : Type u → Type v} [Monad m] (range : Range) (init : β)
+protected def forIn (range : Range) (init : β)
   (f : Nat → β → m (ForInStep β)) : m β := do
   if hs : range.step = 0 then
     return init
@@ -65,17 +75,23 @@ theorem emptyStep {k : ℕ} {init : β} {f : ℕ → β → Id (ForInStep β)} :
   STD.forIn (mkRange' k k) init f = init := emptyStep' Nat.le.refl
 
 -- We can decompose a for loop range into two parts and execute them separately
--- Only succ is specified here
-theorem rangeDecompose (start mid stop : ℕ) :
+-- The results are only stated for `Id` monad, not sure how to generalise
+-- This only holds for if the loop 
+theorem rangeDecompose (start mid stop : ℕ) (hs : start ≤ mid ∧ mid ≤ stop)
+  {f : ℕ → β → Id (ForInStep β)} (hf : ∀ i r, (f i r).isYield) :
   STD.forIn (mkRange' start stop) init f =
     STD.forIn (mkRange' mid stop) (Id.run (STD.forIn (mkRange' start mid) init f)) f := by
   sorry
 
-theorem singleStep (start mid stop : ℕ) :
-  STD.forIn (mkRange' start stop) init f =
-    STD.forIn (mkRange' mid stop) (Id.run (STD.forIn (mkRange' start mid) init f)) f := by
-  sorry
+-- The results are only stated for `Id` monad, not sure how to generalise
+-- theorem singleStep (start stop : ℕ) (hs : start ≤ stop) {f : ℕ → β → Id (ForInStep β)} :
+--   STD.forIn (mkRange' start stop.succ) init f =
+--     f stop (Id.run (STD.forIn (mkRange' start mid) init f)) := by
+--   sorry
 
-#eval Id.run (STD.forIn { start := 3, stop := 13 } 5 (λ _ r => ForInStep.yield (r + 1)))
+def ff := λ i r => if i ≥ 100 then ForInStep.done (r + 1) else ForInStep.yield (r + 1)
+
+#eval Id.run (STD.forIn { start := 3, stop := 13 } 5 ff)
+#eval Id.run (STD.forIn { start := 93, stop := 103 } 5 ff)
 
 end STD
