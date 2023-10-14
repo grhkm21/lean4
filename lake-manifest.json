@@ -1,42 +1,53 @@
-{
-    "version": 4,
-    "packagesDir": "lake-packages",
-    "packages": [
-        {
-            "git": {
-                "url": "https://github.com/leanprover-community/mathlib4.git",
-                "subDir?": null,
-                "rev": "14dc19930dcdd0c7cf306943c36012cd8232eb3f",
-                "name": "mathlib",
-                "inputRev?": null
-            }
-        },
-        {
-            "git": {
-                "url": "https://github.com/gebner/quote4",
-                "subDir?": null,
-                "rev": "7ac99aa3fac487bec1d5860e751b99c7418298cf",
-                "name": "Qq",
-                "inputRev?": "master"
-            }
-        },
-        {
-            "git": {
-                "url": "https://github.com/JLimperg/aesop",
-                "subDir?": null,
-                "rev": "ba61f7fec6174d8c7d2796457da5a8d0b0da44c6",
-                "name": "aesop",
-                "inputRev?": "master"
-            }
-        },
-        {
-            "git": {
-                "url": "https://github.com/leanprover/std4",
-                "subDir?": null,
-                "rev": "de7e2a79905a3f87cad1ad5bf57045206f9738c7",
-                "name": "std",
-                "inputRev?": "main"
-            }
-        }
-    ]
-}
+{"version": 6,
+ "packagesDir": "lake-packages",
+ "packages":
+ [{"git":
+   {"url": "https://github.com/leanprover-community/mathlib4.git",
+    "subDir?": null,
+    "rev": "644ffcede0f3d1da4b7cfc97215cd7ab5e071696",
+    "opts": {},
+    "name": "mathlib",
+    "inputRev?": null,
+    "inherited": false}},
+  {"git":
+   {"url": "https://github.com/gebner/quote4",
+    "subDir?": null,
+    "rev": "a387c0eb611857e2460cf97a8e861c944286e6b2",
+    "opts": {},
+    "name": "Qq",
+    "inputRev?": "master",
+    "inherited": true}},
+  {"git":
+   {"url": "https://github.com/JLimperg/aesop",
+    "subDir?": null,
+    "rev": "41c6370eb2f0c9052bee6af0e0a017b9ba8da2b8",
+    "opts": {},
+    "name": "aesop",
+    "inputRev?": "master",
+    "inherited": true}},
+  {"git":
+   {"url": "https://github.com/mhuisi/lean4-cli.git",
+    "subDir?": null,
+    "rev": "39229f3630d734af7d9cfb5937ddc6b41d3aa6aa",
+    "opts": {},
+    "name": "Cli",
+    "inputRev?": "nightly",
+    "inherited": true}},
+  {"git":
+   {"url": "https://github.com/EdAyers/ProofWidgets4",
+    "subDir?": null,
+    "rev": "27715d1daf32b9657dc38cd52172d77b19bde4ba",
+    "opts": {},
+    "name": "proofwidgets",
+    "inputRev?": "v0.0.18",
+    "inherited": true}},
+  {"git":
+   {"url": "https://github.com/leanprover/std4",
+    "subDir?": null,
+    "rev": "a093d7a6ac721071d8ba3774b0318063928cd3e2",
+    "opts": {},
+    "name": "std",
+    "inputRev?": "main",
+    "inherited": true}}],
+ "name": "lean4"}
+>>>>>>> a2ee9bf (setup)
