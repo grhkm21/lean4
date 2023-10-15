@@ -9,5 +9,5 @@ example {a b : ℕ} : a ≤ b ∨ b ≤ a := Nat.le_or_le a b
 example : False → P := by exact?
 example {a : ℕ} : a ≤ succ a := by exact?
 example (h : succ a ≤ succ b) : a ≤ b := by exact?
-example (h : ¬P ∨ Q) (h' : P) : Q := by exact?
+/- example (h : ¬P ∨ Q) (h' : P) : Q := by exact? -/
 example (h : ¬P ∨ Q) (h' : P) : Q := imp_iff_not_or.mpr h h'

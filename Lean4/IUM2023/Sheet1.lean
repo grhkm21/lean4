@@ -1,5 +1,4 @@
 import Mathlib.Tactic
-import Mathlib.Data.Nat.Prime
 
 open Nat
 
@@ -55,10 +54,16 @@ end Problem1
 namespace Problem2
 
 theorem PartA (h1 : x ≤ y) (h2 : y ≤ z) : x ≤ z := by
-  sorry
+  let ⟨_, hdx⟩ := le.dest h1
+  let ⟨_, hdy⟩ := le.dest h2
+  rw [←hdy, ←hdx, add_assoc]
+  apply Nat.le_add_right
 
 theorem PartB (h1 : x ≤ y) (h2 : y ≤ x) : x = y := by
-  sorry
+  let ⟨u, hu⟩ := le.dest h1
+  let ⟨v, hv⟩ := le.dest h2
+  rw [←add_zero x, ←hu, add_assoc] at hv
+  rw [←hu, Nat.eq_zero_of_add_eq_zero_right $ add_left_cancel hv, add_zero]
 
 end Problem2
 
@@ -66,20 +71,26 @@ end Problem2
 
 namespace Problem3
 
-/- We can assume this -/
-#check succ_le_iff
+theorem PartA : x < succ x := lt_of_succ_le $ le_refl _
 
-theorem PartA : x < succ x := by sorry
+theorem PartB : 0 < succ x := lt_of_succ_le $ succ_le_succ $ Nat.zero_le _
 
-theorem PartB : 0 < succ x := by sorry
+theorem PartC : ¬(x < 0) := not_succ_le_zero _
 
-theorem PartC : ¬(x < 0) := by sorry
+theorem PartD : (x < y → x ≤ y) ∧ (x = y → x ≤ y) := ⟨le_trans (le_succ _), le_of_eq⟩
 
-theorem PartD : (x < y → x ≤ y) ∧ (x = y → x ≤ y) := sorry
+theorem PartE : x ≤ y → (x < y ∨ x = y) := by
+  induction' x with x hx generalizing y <;>
+  induction' y with y hy <;> intro h <;> FIX
+  · trivial
+  · exact Or.inl $ zero_lt_succ _
+  · exfalso ; exact not_succ_le_zero _ h
+  · rw [succ_eq_add_one, succ_eq_add_one] at h
+    cases' hx $ le_of_lt_succ h with h' h'
+    · left ; exact lt_succ_of_le h'
+    · right ; rw [h']
 
-theorem PartE : x ≤ y → (x < y ∨ x = y) := sorry
-
-theorem PartF : ¬(x < x) := sorry
+theorem PartF : ¬(x < x) := not_succ_le_self _
 
 end Problem3
 
@@ -87,31 +98,23 @@ end Problem3
 
 namespace Problem4
 
-example (h : x ≠ 0) : ∃ y, x = succ y := exists_eq_succ_of_ne_zero h
-
 theorem Problem (hx : x ≠ 0) (h : a * x = b * x) : a = b := by
   let ⟨y, hy⟩ := exists_eq_succ_of_ne_zero hx
   rw [hy] at h
-  induction' a with a ha generalizing b
+  induction' a with a ha generalizing b <;>
   induction' b with b hb <;> FIX
   · trivial
-  · exfalso
-    rw [zero_mul] at h
-    trivial
-  · cases' b with b
-    FIX
-    · rw [zero_mul] at h
-      trivial
-    · rw [succ_mul, succ_mul, Nat.add_right_cancel_iff] at h
-      rw [ha h]
+  · rw [zero_mul] at h ; trivial
+  · rw [zero_mul] at h ; trivial
+  · rw [succ_mul, succ_mul] at h ; rw [ha $ add_right_cancel h]
 
-/- Alternative solution below without induction -/
+/- Alternative solution below -/
 lemma le_or_le (x y : ℕ) : x ≤ y ∨ y ≤ x := by
   induction' x with x hx
   · left
     exact Nat.zero_le y
   · cases' hx with h h
-    · let ⟨z, hz⟩ := Nat.le.dest h
+    · let ⟨z, hz⟩ := le.dest h
       cases' z with z ; FIX
       · right
         rw [←hz, add_zero]
@@ -122,15 +125,14 @@ lemma le_or_le (x y : ℕ) : x ≤ y ∨ y ≤ x := by
     · right
       exact le_trans h (le_succ x)
 
-example (h : a ≤ b) : ∃ c, a + c = b := le.dest h
 lemma eq_of_mul_eq_right_and_le (h : x ≠ 0) (h' : a * x = b * x) (hab : a ≤ b) : a = b := by
-  let ⟨c, hc⟩ := Nat.le.dest hab
+  let ⟨c, hc⟩ := le.dest hab
   rw [←hc, ←add_zero (a * x), add_mul] at h'
   have hcx : c = 0 ∨ x = 0 := Nat.mul_eq_zero.mp (add_left_cancel h'.symm)
   have hc' : c = 0 := (or_iff_not_imp_right.mp hcx) h
   rw [←hc, hc', add_zero]
 
-lemma mul_left_cancel (h : x ≠ 0) (h' : a * x = b * x) : a = b := by
+lemma Problem' (h : x ≠ 0) (h' : a * x = b * x) : a = b := by
   cases' le_or_le a b with hab hab
   · exact eq_of_mul_eq_right_and_le h h' hab
   · exact (eq_of_mul_eq_right_and_le h h'.symm hab).symm
@@ -224,3 +226,50 @@ theorem PartG (h : a * b = 1) : a = 1 ∧ b = 1 := by
   exact ⟨PartG' h'.left h''.left, PartG' h'.right h''.right⟩
 
 end Problem5
+
+-------------------------------------------------------------------------------
+
+namespace Problem6
+
+open Dvd
+
+structure PartialOrder' (α : Type) (R : α → α → Prop) : Prop where
+  rRefl : ∀ a : α, R a a
+  rTrans : ∀ a b c : α, R a b → R b c → R a c
+  rAntisymm : ∀ a b : α, R a b → R b a → a = b
+
+structure TotalOrder' (α : Type) (R : α → α → Prop) extends PartialOrder' α R : Prop where
+  rConn : ∀ a b : α, R a b ∨ R b a
+
+theorem Problem : PartialOrder' ℕ dvd where
+  rRefl := fun a => ⟨1, (mul_one a).symm⟩
+  rTrans := fun a b c => by rintro ⟨d, rfl⟩ ⟨e, rfl⟩ ; exact ⟨d * e, by rw [mul_assoc]⟩
+  rAntisymm := fun a b ⟨c, hc⟩ ⟨d, hd⟩ => by
+    rw [hd, mul_assoc] at hc
+    cases' (Problem5.PartF hc.symm) with hb hdc
+    · rw [hd, hb, zero_mul]
+    · rw [hd, (Problem5.PartG hdc).left, mul_one]
+
+theorem notTotalOrder' : ¬TotalOrder' ℕ dvd := fun ⟨_, h⟩ => by specialize h 3 5 ; norm_num at h
+
+end Problem6
+
+-------------------------------------------------------------------------------
+
+namespace Problem7
+
+theorem Problem (h : a * d + b * c = a * c + b * d) : a = b ∨ c = d := by
+  by_contra' hnq
+  cases' hnq.left.lt_or_lt with h' h' <;> let ⟨e, he⟩ := le.dest (le_of_lt h')
+  · rw [←he, add_mul, add_mul, ←add_assoc, ←add_assoc, add_comm (a * d), mul_comm e c, mul_comm e d] at h
+    refine hnq.right $ Problem4.Problem ?_ $ add_left_cancel h
+    by_contra' he'
+    rw [he', add_zero] at he
+    exact (Nat.ne_of_lt h') he
+  · rw [←he, add_mul, add_mul, add_comm, add_assoc (b * c), add_comm (b * d), mul_comm e, mul_comm e] at h
+    refine hnq.right.symm $ Problem4.Problem ?_ $ add_right_cancel $ add_left_cancel h
+    by_contra' he'
+    rw [he', add_zero] at he
+    exact (Nat.ne_of_lt h') he
+
+end Problem7
