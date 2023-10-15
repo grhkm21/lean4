@@ -1,23 +1,10 @@
 import Mathlib.Tactic
-import Mathlib.Combinatorics.Additive.Behrend
 
-variable (α : Type*) [DecidableEq α] [LinearOrder α] [CoeOut α ℚ] [Fintype α]
+def f (α : Type) := ∀ a : α, a = a
 
-def MyProp : Prop := ∀ a : α, (0 : ℚ) < a
+noncomputable instance [DecidableEq α] : Decidable (f α) := Classical.dec (f α)
 
-instance : Decidable (MyProp α) := inferInstanceAs (Decidable (∀ _, _))
+instance [DecidableEq α] [Fintype α] : Decidable (f α) := inferInstanceAs (Decidable (∀ _, _))
 
-def S : Finset ℚ := {0, 2, 4, 6, 8}
-
-/- Works -/
-instance : Coe S ℚ where
-  coe := fun x => x
-
-/- Errors -/
-instance ApparentlyICanNameThis {T : Finset ℚ} : CoeOut T ℚ where
-  coe := fun x => x
-
-#check ApparentlyICanNameThis
-
-#eval MyProp S
-#eval MyProp ({1, 2, 3, 4, 5} : Finset ℚ)
+#eval f ℚ
+#eval f ({1, 2, 3} : Finset ℤ)
