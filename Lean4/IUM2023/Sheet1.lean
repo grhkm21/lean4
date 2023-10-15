@@ -187,13 +187,32 @@ theorem PartC' (h : a * b = c) (ha : 1 < a) (hb : 1 < b) : a < c := by
 theorem PartC (h : a * b = c) (ha : 1 < a) (hb : 1 < b) : a < c ∧ b < c := by
   exact ⟨PartC' h ha hb, PartC' (by rw [←h, mul_comm]) hb ha⟩
 
-/- What is the definition of .Prime? The `irreducible` one? -/
-theorem PartD (h : 1 < c) (hc : ¬c.Prime) : ∃ a b, c = a * b ∧ 1 < a ∧ a < c ∧ 1 < b ∧ b < c := by
-  rw [Nat.prime_iff, _root_.Prime] at hc
+/- We have a different definition from Lean's -/
+def OurPrime (n : ℕ) : Prop := 2 ≤ n ∧ ∀ k, k ∣ n → k = 1 ∨ k = n
+
+theorem PartD (h : 1 < c) (hc : ¬OurPrime c) : ∃ a b, c = a * b ∧ 1 < a ∧ a < c ∧ 1 < b ∧ b < c := by
+  rw [OurPrime] at hc
   push_neg at hc
-  rw [Nat.isUnit_iff] at hc
-  let ⟨a, b, h₁, h₂, h₃⟩ := hc (not_eq_zero_of_lt h) (Nat.ne_of_gt h)
-  sorry
+  have ⟨k, ⟨⟨k', hk'⟩, hk, h''⟩⟩ := hc h
+  refine ⟨k, k', ⟨hk', ?_, ?_, ?_, ?_⟩⟩
+  · match k with
+    | 0 => exfalso ; rw [zero_mul] at hk' ; exact h'' hk'.symm
+    | 1 => exfalso ; trivial
+    | succ (succ k) => exact one_lt_succ_succ k
+  · have h' := Problem3.PartE $ And.left $ Problem5.PartB hk'.symm (not_eq_zero_of_lt h)
+    rw [←@not_not (k = c)] at h'
+    exact imp_iff_not_or.mpr h'.symm h''
+  · match k' with
+    | 0 => exfalso ; rw [hk', mul_zero] at h ; exact not_succ_le_zero 1 h
+    | 1 => exfalso ; rw [hk', mul_one] at h'' ; trivial
+    | succ (succ k') => exact one_lt_succ_succ k'
+  · have h' := Problem3.PartE $ And.right $ Problem5.PartB hk'.symm (not_eq_zero_of_lt h)
+    rw [←@not_not (k' = c)] at h'
+    have h'' : k' ≠ c := by
+      by_contra' h''
+      rw [h''] at hk'
+      exact hk $ (mul_eq_right₀ $ not_eq_zero_of_lt h).mp hk'.symm
+    refine imp_iff_not_or.mpr h'.symm h''
 
 /- This should be earlier -/
 theorem PartE (h : a * b = 0) : a = 0 ∨ b = 0 := by
