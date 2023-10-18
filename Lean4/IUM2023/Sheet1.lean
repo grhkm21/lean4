@@ -80,17 +80,18 @@ theorem PartC : ¬(x < 0) := not_succ_le_zero _
 theorem PartD : (x < y → x ≤ y) ∧ (x = y → x ≤ y) := ⟨le_trans (le_succ _), le_of_eq⟩
 
 theorem PartE : x ≤ y → (x < y ∨ x = y) := by
-  induction' x with x hx generalizing y <;>
-  induction' y with y hy <;> intro h <;> FIX
-  · trivial
-  · exact Or.inl $ zero_lt_succ _
-  · exfalso ; exact not_succ_le_zero _ h
-  · rw [succ_eq_add_one, succ_eq_add_one] at h
-    cases' hx $ le_of_lt_succ h with h' h'
-    · left ; exact lt_succ_of_le h'
-    · right ; rw [h']
+  intro h
+  let ⟨z, hz⟩ := le.dest h
+  cases' z with z hz
+  FIX
+  · right ; rw [←hz, add_zero]
+  · left ; rw [←add_zero x, ←hz, add_succ]
+    exact lt_of_succ_le $ succ_le_succ $ (Nat.add_le_add_iff_left x 0 z).mpr $ Nat.zero_le _
 
-theorem PartF : ¬(x < x) := not_succ_le_self _
+theorem PartF : ¬(x < x) :=
+  match x with
+  | 0 => not_succ_le_zero _
+  | succ n => fun h => absurd (le_of_succ_le_succ h) (not_succ_le_self n)
 
 end Problem3
 
@@ -102,11 +103,8 @@ theorem Problem (hx : x ≠ 0) (h : a * x = b * x) : a = b := by
   let ⟨y, hy⟩ := exists_eq_succ_of_ne_zero hx
   rw [hy] at h
   induction' a with a ha generalizing b <;>
-  induction' b with b hb <;> FIX
-  · trivial
-  · rw [zero_mul] at h ; trivial
-  · rw [zero_mul] at h ; trivial
-  · rw [succ_mul, succ_mul] at h ; rw [ha $ add_right_cancel h]
+  induction' b with b hb <;> FIX <;> simp only [zero_mul, succ_mul] at h <;> try trivial
+  rw [ha $ add_right_cancel h]
 
 /- Alternative solution below -/
 lemma le_or_le (x y : ℕ) : x ≤ y ∨ y ≤ x := by
@@ -144,30 +142,23 @@ end Problem4
 namespace Problem5
 
 theorem PartA (h : a * b = c) (h' : c ≠ 0) : a ≠ 0 ∧ b ≠ 0 := by
-  by_contra h
-  rw [not_and_or] at h
-  push_neg at h
-  cases' h with ha hb
-  · rw [ha, zero_mul] at h
-    exact h' h.symm
-  · rw [hb, mul_zero] at h
-    exact h' h.symm
+  by_contra h''
+  cases' (not_and_or.mp h'') with hab hab
+  <;> refine h' ?_
+  <;> push_neg at hab
+  <;> simp only [hab, zero_mul] at h
+  <;> exact h.symm
 
 lemma PartB' (h : a * b = c) (h' : c ≠ 0) : a ≤ c := by
   let ⟨_, hb⟩ := PartA h h'
-  rw [←h]
-  cases' b with b hb
-  FIX
-  · exfalso
-    exact hb (refl 0)
-  · rw [mul_succ]
-    apply Nat.le_add_left
+  cases' b with b hb <;> try rw [zero_eq] at *
+  · exfalso ; exact hb (refl 0)
+  · rw [←h, mul_succ] ; apply Nat.le_add_left
 
-theorem PartB (h : a * b = c) (h' : c ≠ 0) : a ≤ c ∧ b ≤ c := by
-  exact ⟨PartB' h h', PartB' (by rw [←h, mul_comm]) h'⟩
+theorem PartB (h : a * b = c) (h' : c ≠ 0) : a ≤ c ∧ b ≤ c :=
+  ⟨PartB' h h', PartB' (Nat.mul_comm _ _ ▸ h) h'⟩
 
-lemma PartC_lemma1 (h : 1 < a) : ∃ b, a = succ b :=
-  exists_eq_succ_of_ne_zero $ not_eq_zero_of_lt h
+lemma PartC_lemma1 (h : 1 < a) : ∃ b, a = succ b := exists_eq_succ_of_ne_zero $ not_eq_zero_of_lt h
 
 theorem PartC' (h : a * b = c) (ha : 1 < a) (hb : 1 < b) : a < c := by
   have hc : c ≠ 0 := by
@@ -184,35 +175,27 @@ theorem PartC' (h : a * b = c) (ha : 1 < a) (hb : 1 < b) : a < c := by
     exact hb.false
   · exact lt_of_le_of_ne this h'
 
-theorem PartC (h : a * b = c) (ha : 1 < a) (hb : 1 < b) : a < c ∧ b < c := by
-  exact ⟨PartC' h ha hb, PartC' (by rw [←h, mul_comm]) hb ha⟩
+theorem PartC (h : a * b = c) (ha : 1 < a) (hb : 1 < b) : a < c ∧ b < c :=
+  ⟨PartC' h ha hb, PartC' (Nat.mul_comm _ _ ▸ h) hb ha⟩
 
 /- We have a different definition from Lean's -/
 def OurPrime (n : ℕ) : Prop := 2 ≤ n ∧ ∀ k, k ∣ n → k = 1 ∨ k = n
 
-theorem PartD (h : 1 < c) (hc : ¬OurPrime c) : ∃ a b, c = a * b ∧ 1 < a ∧ a < c ∧ 1 < b ∧ b < c := by
+theorem PartD (h : 1 < c) (hc : ¬OurPrime c) :
+  ∃ a b, c = a * b ∧ 1 < a ∧ a < c ∧ 1 < b ∧ b < c :=
+by
   rw [OurPrime] at hc
   push_neg at hc
-  have ⟨k, ⟨⟨k', hk'⟩, hk, h''⟩⟩ := hc h
-  refine ⟨k, k', ⟨hk', ?_, ?_, ?_, ?_⟩⟩
-  · match k with
-    | 0 => exfalso ; rw [zero_mul] at hk' ; exact h'' hk'.symm
-    | 1 => exfalso ; trivial
-    | succ (succ k) => exact one_lt_succ_succ k
-  · have h' := Problem3.PartE $ And.left $ Problem5.PartB hk'.symm (not_eq_zero_of_lt h)
-    rw [←@not_not (k = c)] at h'
-    exact imp_iff_not_or.mpr h'.symm h''
-  · match k' with
-    | 0 => exfalso ; rw [hk', mul_zero] at h ; exact not_succ_le_zero 1 h
-    | 1 => exfalso ; rw [hk', mul_one] at h'' ; trivial
-    | succ (succ k') => exact one_lt_succ_succ k'
-  · have h' := Problem3.PartE $ And.right $ Problem5.PartB hk'.symm (not_eq_zero_of_lt h)
-    rw [←@not_not (k' = c)] at h'
-    have h'' : k' ≠ c := by
-      by_contra' h''
-      rw [h''] at hk'
-      exact hk $ (mul_eq_right₀ $ not_eq_zero_of_lt h).mp hk'.symm
-    refine imp_iff_not_or.mpr h'.symm h''
+  let ⟨k, ⟨⟨k', hk'⟩, hk, h''⟩⟩ := hc h
+  have hk' := hk'.symm
+  have hk1 : k ≠ 0 := fun ha => not_eq_zero_of_lt h $ (mul_eq_zero_of_left ha k' ▸ hk').symm
+  have ⟨hk2, hk3⟩ := Problem5.PartB hk' $ not_eq_zero_of_lt h
+  have hk4 : k' ≠ c := fun hkc => hk $ (mul_eq_right₀ $ not_eq_zero_of_lt h).mp $ hkc ▸ hk'
+  refine ⟨k, k', ⟨hk'.symm, ?_, lt_of_le_of_ne hk2 h'', ?_, lt_of_le_of_ne hk3 hk4⟩⟩
+  · iterate 2 cases' k with k <;> try trivial
+    linarith
+  · iterate 2 cases' k' with k' <;> try simp [←one_eq_succ_zero, h''] at hk' <;> try linarith
+    linarith
 
 /- This should be earlier -/
 theorem PartE (h : a * b = 0) : a = 0 ∨ b = 0 := by
@@ -232,16 +215,16 @@ theorem PartF (h : a * b = a) : a = 0 ∨ b = 1 := by
 
 lemma PartG' (h : a ≤ 1) (h' : a ≠ 0) : a = 1 := Problem2.PartB h (zero_lt_of_ne_zero h')
 
+example (h : ¬P → Q) : P ∨ Q := or_iff_not_imp_left.mpr h
+example : ¬P → Q ↔ P ∨ Q := Iff.symm or_iff_not_imp_left
+
 theorem PartG (h : a * b = 1) : a = 1 ∧ b = 1 := by
   have h' : a ≤ 1 ∧ b ≤ 1 := PartB h one_ne_zero
   have h'' : a ≠ 0 ∧ b ≠ 0 := by
-    by_contra h
-    rw [not_and_or, not_not, not_not] at h
-    cases' h with ha hb
-    · rw [ha, zero_mul] at h
-      exact zero_ne_one h
-    · rw [hb, mul_zero] at h
-      exact zero_ne_one h
+    by_contra' hab
+    cases' (or_iff_not_imp_left.mpr hab) with hab hab
+    <;> try simp only [hab, zero_mul] at h
+    <;> contradiction
   exact ⟨PartG' h'.left h''.left, PartG' h'.right h''.right⟩
 
 end Problem5
@@ -280,6 +263,7 @@ namespace Problem7
 theorem Problem (h : a * d + b * c = a * c + b * d) : a = b ∨ c = d := by
   by_contra' hnq
   cases' hnq.left.lt_or_lt with h' h' <;> let ⟨e, he⟩ := le.dest (le_of_lt h')
+  /- This proof is so bad... -/
   · rw [←he, add_mul, add_mul, ←add_assoc, ←add_assoc, add_comm (a * d), mul_comm e c, mul_comm e d] at h
     refine hnq.right $ Problem4.Problem ?_ $ add_left_cancel h
     by_contra' he'
