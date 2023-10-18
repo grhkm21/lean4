@@ -1,13 +1,13 @@
 import Mathlib.Tactic
 
-open Nat
+theorem thm1 {ι : Type*} [SeminormedAddCommGroup ι] : 1 = 0 := sorry
 
-example {m n : ℕ} (h : n ≠ 0) : ∃ m : ℕ, n = m.succ := exists_eq_succ_of_ne_zero h
+/-
+▶ 5:86-5:90: error:
+typeclass instance problem is stuck, it is often due to metavariables
+  SeminormedAddCommGroup ?m.131
+-/
+example {ι : Type*} [h : SeminormedAddCommGroup ι] (f : ℕ → ι) : f 1 = f 0 := by rw [thm1]
 
-example {a b : ℕ} : a < b ∨ a = b ∨ a > b := Nat.lt_trichotomy a b
-example {a b : ℕ} : a ≤ b ∨ b ≤ a := Nat.le_or_le a b
-example : False → P := by exact?
-example {a : ℕ} : a ≤ succ a := by exact?
-example (h : succ a ≤ succ b) : a ≤ b := by exact?
-/- example (h : ¬P ∨ Q) (h' : P) : Q := by exact? -/
-example (h : ¬P ∨ Q) (h' : P) : Q := imp_iff_not_or.mpr h h'
+/- Works -/
+example {ι : Type*} [h : SeminormedAddCommGroup ι] (f : ℕ → ι) : f 1 = f 0 := by rw [@thm1 _ h]
