@@ -122,3 +122,31 @@ by
       · rw [uIcc_of_le hN₂]
         exact fun x hx ↦ hf.right x hx.left hx.right
       · exact (intervalIntegrable_iff_integrable_Icc_of_le hN₂).mpr hf'.right
+
+theorem partial_summation_nat' {𝕜 : Type*} [IsROrC 𝕜] (a : ℕ → 𝕜) (f f' : ℝ → 𝕜)
+  {k : ℕ} {N : ℕ} (hN : k ≤ N)
+  (hf : ∀ i ∈ Icc (k : ℝ) N, HasDerivAt f (f' i) i)
+  (hf' : IntegrableOn f' (Icc k N)):
+  ∑ n in Finset.Icc k N, a n * f n =
+    summatory a k N * f N - ∫ t in Icc (k : ℝ) N, summatory a k t * f' t := by
+  by_cases hk : k = N <;> simp [hk, summatory]
+  /- TODO: Remove this. It's here to change binder variable name -/
+  conv => lhs ; change ∑ i in Finset.Ico k (N + 1), a i * f i
+  rw [Finset.sum_eq_sum_Ico_succ_bot $ lt_succ_of_le hN]
+  /- Shift index -/
+  have : ∀ n, n ∈ Finset.Ico k N →
+      a (n + 1) * f ↑(n + 1) = (summatory a k (n + 1) - summatory a k n) * f (n + 1) := by
+      intro n hn
+      have : k ≤ n + 1 := (Finset.mem_Ico.mp hn).left.trans $ by linarith
+      rw [cast_add, cast_one, summatory_succ _ _ _ this, add_comm, add_sub_cancel]
+  rw [←Finset.sum_Ico_add']
+  /- Write a n = S (n + 1) - S n, then split sum -/
+  rw [Finset.sum_congr rfl this]
+  clear this
+  simp only [sub_mul, Finset.sum_sub_distrib, show ∀ x : ℕ, ((x : ℝ) + 1) = (x + 1 : ℕ) by simp]
+  /- Shift index for telescoping -/
+  rw [Finset.sum_Ico_add' (fun (x : ℕ) ↦ summatory a k ↑x * f ↑x)]
+  /- Isolating start / end terms -/
+  /- TODO: Isolate the Iso (k + 1) (n + 1) -> g n + Iso (k + 1) n and same for the other sum
+     Then we can do the "telescoping" stuff, which probably requires the same integration lemma. -/
+  sorry -- Sorry! No time!

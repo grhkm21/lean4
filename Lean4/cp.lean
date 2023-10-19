@@ -1,13 +1,7 @@
 import Mathlib.Tactic
 
-theorem thm1 {ι : Type*} [SeminormedAddCommGroup ι] : 1 = 0 := sorry
+theorem f (a b : ℕ) : a = b := sorry
 
-/-
-▶ 5:86-5:90: error:
-typeclass instance problem is stuck, it is often due to metavariables
-  SeminormedAddCommGroup ?m.131
--/
-example {ι : Type*} [h : SeminormedAddCommGroup ι] (f : ℕ → ι) : f 1 = f 0 := by rw [thm1]
-
-/- Works -/
-example {ι : Type*} [h : SeminormedAddCommGroup ι] (f : ℕ → ι) : f 1 = f 0 := by rw [@thm1 _ h]
+example (a b : ℕ) : a + 1 = b + 1 ∧ false := by
+  constructor
+  simp only [show a + 1 = b + 1 by simp only [f a b]]
