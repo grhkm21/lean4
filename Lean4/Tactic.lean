@@ -1,4 +1,6 @@
 import Mathlib.Tactic
+import Lean.Meta.Basic
+import Lean.Parser.Term
 
 /- Implementing and_then -/
 syntax tactic " and_then " tactic : tactic
@@ -41,7 +43,7 @@ elab "custom_assump" : tactic =>
           (m!"unable to find matching hypothesis of type ({goalType})")
 
 example (H1 : 1 = 1) (H2 : 2 = 2) : 2 = 2 := by custom_assump
-example (H1 : 1 = 1) : 2 = 2 := by custom_assump
+/- example (H1 : 1 = 1) : 2 = 2 := by custom_assump -/
 
 /- Implementing let and have -/
 open Lean.Elab.Tactic in
@@ -79,8 +81,183 @@ example : (1 = 2 ∧ 3 = 4) ∧ 5 = 6 := by
   constructor
   constructor
   reverse_goals
-  sorry
+  all_goals sorry
 
 /- Write a tactic that expands everything -/
 example {x : ℤ} : x * x + 2 * x + 1 = (x + 1) ^ 2 := by
   ring_nf
+
+
+open Lean
+def bv0 : Expr := .bvar 0
+#eval bv0
+#eval toExpr true
+
+#check Expr.app
+#check mkApp2
+#check mkAppN
+#check mkLambdaEx
+#eval toExpr (1 + 1)
+
+def doo : MetaM Expr := do
+  let me <- Meta.mkFreshExprMVar none
+  let m := Lean.Expr.mvarId! me
+  Lean.MVarId.assign m (toExpr (3 + 3))
+  Lean.instantiateMVars me
+
+elab "doo" : term => do
+  let a <- doo
+  return a
+
+#check doo
+
+-------------------------------------------------------------------------------------------
+
+section myTacticSection
+
+open Lean Meta Elab Elab.Tactic Elab.Term Std.Tactic.TryThis Parser Parser.Tactic
+
+/- syntax "myTactic" (ppSpace colGt term)? : tactic -/
+/- elab_rules : tactic -/
+/- | `(tactic|myTactic $[$sop:term]?) => withMainContext do -/
+/-   let stx ← getRef -/
+/-   let expr ← match sop with -/
+/-     | none => getMainTarget -/
+/-     | some sop => do -/
+/-       let tgt ← getMainTarget -/
+/-       let ex := elabTermEnsuringType sop (← inferType tgt) -/
+/-       let ex ← withRef sop ex -/
+/-       /- if !(← isDefEq ex tgt) then throwErrorAt sop "The term{indentD ex}\nis not defeq to the goal:{indentD tgt}" -/ -/
+/-       dbg_trace f!"tgt : {←delabToRefinableSyntax tgt}\n" -/
+/-       dbg_trace f!"ex : {←delabToRefinableSyntax ex}" -/
+/-       instantiateMVars ex -/
+/-   let dstx ← delabToRefinableSyntax expr -/
+/-   dbg_trace f!"\n\ndstx : {dstx}" -/
+
+#check isExprDefEq
+#check Parser.Term.syntheticHole
+
+syntax "change'" term (ppSpace colGt location)? : tactic
+
+/-- my change! -/
+macro "change'" e:term : tactic => `(tactic| refine_lift show $e from ?_)
+
+def f := fun x ↦ x + 1
+def g := fun x ↦ x + 1
+/-
+def refineCore (stx : Syntax) (tagSuffix : Name) (allowNaturalHoles : Bool) : TacticM Unit := do
+  withMainContext do
+    let (val, mvarIds') ← elabTermWithHoles stx (← getMainTarget) tagSuffix allowNaturalHoles
+    let mvarId ← getMainGoal
+    let val ← instantiateMVars val
+    if val == mkMVar mvarId then
+      /- `val == mkMVar mvarId` is `true` when we've refined the main goal. Refining the main goal
+      (e.g. `refine ?a` when `?a` is the main goal) is an unlikely practice; further, it shouldn't
+      be possible to create new mvarIds during elaboration when doing so. But in the rare event
+      that somehow this happens, this is how we ought to handle it. -/
+      replaceMainGoal (mvarId :: mvarIds')
+    else
+      /- Ensure that the main goal does not occur in `val`. -/
+      if val.findMVar? (· == mvarId) matches some _ then
+        throwError "'refine' tactic failed, value{indentExpr val}\ndepends on the main goal metavariable '{mkMVar mvarId}'"
+      mvarId.assign val
+      replaceMainGoal mvarIds'
+
+-> refineCore e `refine (allowNaturalHoles := false)
+-/
+set_option trace.profiler false
+set_option pp.rawOnError false
+
+syntax "introNames" (ppSpace colGt term) : tactic
+elab_rules : tactic
+| `(tactic|introNames $e:term) =>
+  withMainContext do
+    /- let te ← elabTerm (mayPostpone := true) e none -/
+    /- match te with -/
+    /- | Expr.mvar mvarId => do -/
+    /-   let name := ((←getMCtx).decls.find! mvarId).userName -/
+    /-   let a : Ident := mkIdent name -/
+    /-   let ha : Ident := mkIdent $ name.appendBefore "h" -/
+    /-   let goal ← getMainGoal -/
+    /-   let val ← getMainTarget -/
+    /-   let (fvar, goal) ← (←goal.define "A" (←inferType val) val).intro1P -/
+    /-   replaceMainGoal [goal] -/
+    /-   evalTactic (← `(tactic| try rewrite [show $(←Term.exprToSyntax val) = $a from rfl] at *)) -/
+    /-   evalTactic (← `(tactic| have $ha : $a = $(←Term.exprToSyntax val) := rfl)) -/
+    /-   dbg_trace f!"POGGERS!" -/
+    /- | _ => throwError "RHS is not a hole" -/
+    let (expr, mvarIds) ← elabTermWithHoles e none "suffix" (allowNaturalHoles := true)
+    dbg_trace f!"target : {←delabToRefinableSyntax (←getMainTarget)}"
+    dbg_trace f!"expr : {←delabToRefinableSyntax expr} | {expr}"
+    dbg_trace f!"mvarIds : {repr mvarIds}"
+    let target ← getMainTarget
+    let res ← isDefEq target expr
+    dbg_trace f!"res : {res}"
+
+#eval show MetaM Unit from do
+  let a ← Lean.Meta.mkFreshExprMVar (Expr.const `Nat []) (userName := `a)
+  let ee := Lean.mkAppN (Expr.const `Nat.add []) #[Lean.mkNatLit 2, a]
+  let ff := Lean.mkAppN (Expr.const `Nat.add []) #[Lean.mkNatLit 2, Lean.mkNatLit 1]
+  dbg_trace f!"ee : {ee}\nff : {ff}"
+  let isEqual ← Lean.Meta.isDefEq ee ff
+  IO.println isEqual
+
+syntax "rearrangeTactic" (ppSpace colGt term) : tactic
+elab_rules : tactic
+| `(tactic|rearrangeTactic $f:term) => do
+  withMainContext do
+    let target ← getMainTarget
+    let (ff, mvarIds) ← elabTermWithHoles f none "suffix" (allowNaturalHoles := true)
+    let mctx ← getMCtx
+    mvarIds.forM fun mvarId => mvarId.setKind .natural
+    if ←isDefEq target ff then
+      mvarIds.forM fun mvarId => do
+        let goal ← getMainGoal
+        let name := (mctx.decls.find! mvarId).userName
+        let a : Ident := mkIdent name
+        let ha : Ident := mkIdent $ name.appendBefore "h"
+        assert! ←mvarId.isAssigned
+        match (←getExprMVarAssignment? mvarId) with
+        | some mvarAss =>
+          let mvarType ← inferType mvarAss
+          let (_, goal) ← (←goal.define name mvarType mvarAss).intro1P
+          replaceMainGoal [goal]
+          /- Copied from `set ... with ...` -/
+          evalTactic (← `(tactic| rewrite [show $(←Term.exprToSyntax mvarAss) = $a from rfl]))
+          evalTactic (← `(tactic| have $ha : $a = $(←Term.exprToSyntax mvarAss) := rfl))
+        | none => throwError "what"
+    else
+      throwError "Not isDefEq"
+
+example : 1 + (2 * (5 - 3)) = 5 := by
+  rearrangeTactic ?A + ?B = 5
+  norm_num
+  done
+
+example : (1 + 1) + (2 + 2) + (3 + 3) + (4 + 4) = 20 := by
+  /- change' (1 + 1) + ?_ + ?_ + ?_ = ?_ -/
+  /- convert (1 + 1) + ?_ + ?_ + ?_ = ?_ -/
+  /-
+  Intended use case:
+  myTactic ?A + ?B + ?C + ?D = ?E
+
+  which then
+  1. Introduces definitions like hA : A := 1 + 1
+  2. replaces the goal with that
+  -/
+  rearrangeTactic (?A : ℕ) + ?B + ?C + ?D = ?E
+  norm_num
+  done
+
+example : ∀ x : ℕ, x = x := by unhygienic
+  intro
+  rfl
+
+example : true ∧ true := by constructor <;> trivial
+
+/-
+macro "refine_lift " e:term : tactic => `(tactic| focus (refine no_implicit_lambda% $e; rotate_right))
+macro "have " d:haveDecl : tactic => `(tactic| refine_lift have $d:haveDecl; ?_)
+-/
+
+end myTacticSection

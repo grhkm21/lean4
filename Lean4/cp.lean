@@ -1,7 +1,7 @@
-import Mathlib.Tactic
+import Lean
 
-theorem f (a b : ℕ) : a = b := sorry
+open Lean Meta Elab.Tactic
 
-example (a b : ℕ) : a + 1 = b + 1 ∧ false := by
-  constructor
-  simp only [show a + 1 = b + 1 by simp only [f a b]]
+
+example : 1 + (2 + 2) = 3 := by
+  testDefEq 1 + ?A = 3
