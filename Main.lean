@@ -2,9 +2,10 @@ import Std.Data.Nat.Lemmas
 import Mathlib.Data.Nat.Basic
 import Lean.Meta
 /- import Lean4.Test3 -/
-import Lean4.cp
-import Lean4.IUM2023.Sheet1
-import Lean4.IUM2023.cp
+/- import Lean4.cp -/
+import Lean4.Tactic
+/- import Lean4.IUM2023.Sheet1 -/
+/- import Lean4.IUM2023.cp -/
 
 def f (n : ℕ) : ℕ := Id.run do
   let mut r := 0
