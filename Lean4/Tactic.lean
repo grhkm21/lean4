@@ -202,35 +202,8 @@ elab_rules : tactic
   let isEqual ← Lean.Meta.isDefEq ee ff
   IO.println isEqual
 
-syntax "rearrangeTactic" (ppSpace colGt term) : tactic
-elab_rules : tactic
-| `(tactic|rearrangeTactic $f:term) => do
-  withMainContext do
-    let target ← getMainTarget
-    let (ff, mvarIds) ← elabTermWithHoles f none "suffix" (allowNaturalHoles := true)
-    let mctx ← getMCtx
-    mvarIds.forM fun mvarId => mvarId.setKind .natural
-    if ←isDefEq target ff then
-      mvarIds.forM fun mvarId => do
-        let goal ← getMainGoal
-        let name := (mctx.decls.find! mvarId).userName
-        let a : Ident := mkIdent name
-        let ha : Ident := mkIdent $ name.appendBefore "h"
-        assert! ←mvarId.isAssigned
-        match (←getExprMVarAssignment? mvarId) with
-        | some mvarAss =>
-          let mvarType ← inferType mvarAss
-          let (_, goal) ← (←goal.define name mvarType mvarAss).intro1P
-          replaceMainGoal [goal]
-          /- Copied from `set ... with ...` -/
-          evalTactic (← `(tactic| rewrite [show $(←Term.exprToSyntax mvarAss) = $a from rfl]))
-          evalTactic (← `(tactic| have $ha : $a = $(←Term.exprToSyntax mvarAss) := rfl))
-        | none => throwError "what"
-    else
-      throwError "Not isDefEq"
-
 example : 1 + (2 * (5 - 3)) = 5 := by
-  rearrangeTactic ?A + ?B = 5
+  setm ?A + ?B = 5
   norm_num
   done
 
@@ -245,7 +218,7 @@ example : (1 + 1) + (2 + 2) + (3 + 3) + (4 + 4) = 20 := by
   1. Introduces definitions like hA : A := 1 + 1
   2. replaces the goal with that
   -/
-  rearrangeTactic (?A : ℕ) + ?B + ?C + ?D = ?E
+  setm (?A : ℕ) + ?B + ?C + ?D = ?E
   norm_num
   done
 
