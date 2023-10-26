@@ -5,6 +5,7 @@ import Mathlib.MeasureTheory.Integral.IntervalIntegral
 import Mathlib.MeasureTheory.Measure.AEDisjoint
 import Mathlib.MeasureTheory.Measure.NullMeasurable
 import Mathlib.Tactic
+import Lean4.setm.Setm
 
 open Nat Set Real BigOperators MeasureTheory Filter
 
@@ -14,52 +15,44 @@ noncomputable def summatory (a : ℕ → M) (k : ℕ) (x : ℝ) : M :=
   ∑ n in Finset.Icc k ⌊x⌋₊, a n
 
 lemma summatory_nat (k n : ℕ) :
-  summatory a k n = ∑ n in Finset.Icc k n, a n :=
-by
+    summatory a k n = ∑ n in Finset.Icc k n, a n := by
   simp only [summatory, floor_coe n]
 
 lemma summatory_eq_floor {k : ℕ} (x : ℝ) :
-  summatory a k x = summatory a k ⌊x⌋₊ :=
-by
+    summatory a k x = summatory a k ⌊x⌋₊ := by
   rw [summatory, summatory, floor_coe]
 
 lemma summatory_eq_of_Ico {n k : ℕ} {x : ℝ}
-  (hx : x ∈ Ico (n : ℝ) (n + 1)) :
-  summatory a k x = summatory a k n :=
-by
+    (hx : x ∈ Ico (n : ℝ) (n + 1)) :
+    summatory a k x = summatory a k n := by
   rw [summatory_eq_floor, floor_eq_on_Ico' _ _ hx]
 
 lemma summatory_succ (k n : ℕ) (hk : k ≤ n + 1) :
-  summatory a k (n + 1) = a (n + 1) + summatory a k n :=
-by
+    summatory a k (n + 1) = a (n + 1) + summatory a k n := by
   rw [summatory_nat, ←cast_add_one, summatory_nat, ←Ico_succ_right, @add_comm M,
   Finset.sum_Ico_succ_top hk, Ico_succ_right]
 
 variable {M : Type*} (a : ℕ → M)
 
 @[measurability] lemma measurable_summatory [AddCommMonoid M] [MeasurableSpace M] {k : ℕ} :
-  Measurable (summatory a k) :=
-by
+    Measurable (summatory a k) := by
   change Measurable ((fun y => ∑ i in Finset.Icc k y, a i) ∘ _)
   exact measurable_from_nat.comp measurable_floor
 
-
 lemma abs_summatory_le_sum [h : SeminormedAddCommGroup M] (a : ℕ → M) {k : ℕ} {x : ℝ} :
-  ‖summatory a k x‖ ≤ ∑ i in Finset.Icc k ⌊x⌋₊, ‖a i‖ :=
-by
+    ‖summatory a k x‖ ≤ ∑ i in Finset.Icc k ⌊x⌋₊, ‖a i‖ := by
   rw [summatory]
   exact @norm_sum_le _ _ h _ _
 
 lemma abs_summatory_bound [h : SeminormedAddCommGroup M] (k z : ℕ)
-  {x : ℝ} (hx : x ≤ z) : ‖summatory a k x‖ ≤ ∑ i in Finset.Icc k z, ‖a i‖ :=
-(abs_summatory_le_sum a).trans
-  (Finset.sum_le_sum_of_subset_of_nonneg
-    (Finset.Icc_subset_Icc le_rfl (floor_le_of_le hx)) (by simp))
+    {x : ℝ} (hx : x ≤ z) : ‖summatory a k x‖ ≤ ∑ i in Finset.Icc k z, ‖a i‖ :=
+  (abs_summatory_le_sum a).trans
+    (Finset.sum_le_sum_of_subset_of_nonneg
+      (Finset.Icc_subset_Icc le_rfl (floor_le_of_le hx)) (by simp))
 
 lemma partial_summation_integrable {𝕜 : Type*} [IsROrC 𝕜] (a : ℕ → 𝕜) {f : ℝ → 𝕜} {x y : ℝ}
-  {k : ℕ} (hf' : IntegrableOn f (Icc x y)) :
-  IntegrableOn (summatory a k * f) (Icc x y) :=
-by
+    {k : ℕ} (hf' : IntegrableOn f (Icc x y)) :
+    IntegrableOn (summatory a k * f) (Icc x y) := by
   let b := ∑ i in Finset.Icc k ⌈y⌉₊, norm (a i)
   have : IntegrableOn (b • f) (Icc x y) := by exact Integrable.smul b hf'
   refine this.integrable.mono ?_ ?_
@@ -80,13 +73,15 @@ lemma myLemma {a b : ℝ} (h : x ∈ uIcc a b) (h' : a ≤ b) : a ≤ x ∧ x �
     · replace h' := lt_of_le_of_ne h' h''
       linarith [h'']
 
+set_option profiler true
+set_option trace.profiler true
+
 theorem partial_summation_nat {𝕜 : Type*} [IsROrC 𝕜] (a : ℕ → 𝕜) (f f' : ℝ → 𝕜)
-  {k : ℕ} {N : ℕ} (hN : k ≤ N)
-  (hf : ∀ i ∈ Icc (k : ℝ) N, HasDerivAt f (f' i) i)
-  (hf' : IntegrableOn f' (Icc k N)):
-  ∑ n in Finset.Icc k N, a n * f n =
-    summatory a k N * f N - ∫ t in Icc (k : ℝ) N, summatory a k t * f' t :=
-by
+    {k : ℕ} {N : ℕ} (hN : k ≤ N)
+    (hf : ∀ i ∈ Icc (k : ℝ) N, HasDerivAt f (f' i) i)
+    (hf' : IntegrableOn f' (Icc k N)) :
+    ∑ n in Finset.Icc k N, a n * f n =
+      summatory a k N * f N - ∫ t in Icc (k : ℝ) N, summatory a k t * f' t := by
   rw [←Nat.Ico_succ_right]
   revert hf hf'
   refine le_induction ?_ ?_ N hN
@@ -124,11 +119,11 @@ by
       · exact (intervalIntegrable_iff_integrable_Icc_of_le hN₂).mpr hf'.right
 
 theorem partial_summation_nat' {𝕜 : Type*} [IsROrC 𝕜] (a : ℕ → 𝕜) (f f' : ℝ → 𝕜)
-  {k : ℕ} {N : ℕ} (hN : k ≤ N)
-  (hf : ∀ i ∈ Icc (k : ℝ) N, HasDerivAt f (f' i) i)
-  (hf' : IntegrableOn f' (Icc k N)):
-  ∑ n in Finset.Icc k N, a n * f n =
-    summatory a k N * f N - ∫ t in Icc (k : ℝ) N, summatory a k t * f' t := by
+    {k : ℕ} {N : ℕ} (hN : k ≤ N)
+    (hf : ∀ i ∈ Icc (k : ℝ) N, HasDerivAt f (f' i) i)
+    (hf' : IntegrableOn f' (Icc k N)) :
+    ∑ n in Finset.Icc k N, a n * f n =
+      summatory a k N * f N - ∫ t in Icc (k : ℝ) N, summatory a k t * f' t := by
   by_cases hk : k = N <;> simp [hk, summatory]
   /- TODO: Remove this. It's here to change binder variable name -/
   conv => lhs ; change ∑ i in Finset.Ico k (N + 1), a i * f i
@@ -149,4 +144,26 @@ theorem partial_summation_nat' {𝕜 : Type*} [IsROrC 𝕜] (a : ℕ → 𝕜) (
   /- Isolating start / end terms -/
   /- TODO: Isolate the Iso (k + 1) (n + 1) -> g n + Iso (k + 1) n and same for the other sum
      Then we can do the "telescoping" stuff, which probably requires the same integration lemma. -/
-  sorry -- Sorry! No time!
+  have hk' : k + 1 ≤ N := succ_le_of_lt $ lt_of_le_of_ne hN hk
+  rw [Finset.sum_Ico_succ_top hk', Finset.sum_eq_sum_Ico_succ_bot hk']
+  /- Rearrangement hell -/
+  save
+  setm ?A + ?B + ?C - (?D + ?E) = (?F : 𝕜)
+  rw [show ∀ A B C D E : 𝕜, A + (B + C - (D + E)) = (A + C - D) - (E - B) by intros ; ring_nf]
+  rw [hA, hB, hC, hD, hE, hF] at * ; clear A hA B hB C hC D hD E hE F hF
+  /- subst A -/
+
+  setm ?A + ?C - ?D - (?E - ?B) = ?F
+  set g := fun (k : ℕ) ↦ a k * f k with hg
+  change g k + _ = _
+
+  have ok : ∀ x : ℝ, x ≤ x + 1 := fun x ↦ le_of_lt $ lt_add_one x
+  simp only [←Finset.sum_sub_distrib, ←mul_sub]
+  have ih : ∀ x : ℝ, f ↑(x + 1) - f ↑x = ∫ t in Ico (x : ℝ) (x + 1), f' t := by
+    intro x
+    rw [set_integral_congr_set_ae (Ico_ae_eq_Ioc' volume_singleton volume_singleton)]
+    rw [←intervalIntegral.integral_of_le (ok x)]
+    rw [intervalIntegral.integral_eq_sub_of_hasDerivAt]
+    · sorry
+    · sorry
+
