@@ -124,7 +124,9 @@ theorem A11 (hX : 0 ∉ X) (hA : A ⊆ X) : ∃ B, B ⊆ X ∧ Pred B X = A := b
     rw [Pred, subset_empty.mp hA, filter_empty]
   · /- Strategy: Use induction hypothesis on A \ {m}, then construct like the answer does -/
     set A' := A.filter (fun x ↦ x ≠ m) with hA'
-    have h₁ : 0 ∉ X := by rw [mem_cons, not_or] at hX ; exact hX.right
+    have h₁ : 0 ∉ X := by
+      rw [mem_cons, not_or] at hX
+      exact hX.right
     have h₂ : A' ⊆ X := by
       rw [hA', subset_iff]
       intro x hx
@@ -146,23 +148,20 @@ theorem A11 (hX : 0 ∉ X) (hA : A ⊆ X) : ∃ B, B ⊆ X ∧ Pred B X = A := b
     /- We construct B as B' or B' ∪ {m}. The proof is highly repetitive -/
     by_cases hm₁ : m ∈ A <;> by_cases hm₂ : (PredElement B' m)
     rotate_right
-    · use B', hB'
-      simp only [Pred, filter_cons, hm₂, ite_true, hB''₂, disjUnion_eq_union]
+    /- First two goals have the same proof -/
+    iterate 2
+      use B', hB'
+      simp only [Pred, filter_cons, hm₂, ite_true, ite_false, hB''₂, disjUnion_eq_union]
       nth_rewrite 2 [←filter_union_filter_neg_eq (fun x => x = m) A]
       congr
-      simp only [filter_eq', hm₁, ite_true]
-    · use B', hB'
-      simp only [Pred, filter_cons, hm₂, ite_false, hB''₂, disjUnion_eq_union]
-      nth_rewrite 2 [←filter_union_filter_neg_eq (fun x => x = m) A]
-      congr
-      simp only [filter_eq', hm₁, ite_false]
-    · use cons m B' hm'₂, cons_subset.mpr ⟨mem_cons_self _ _, hB'⟩, ?_
-      · simp_rw [Pred, filter_cons, predElement_cons_self, hm₂, ite_true, cons_eq_insert]
-        change disjUnion _ (Pred ({m} ∪ _) _) _ = _
-        rw [singleton_disjUnion, cons_eq_insert, wont_change B' X m hm hm'₁, hB'₂]
-        exact insert_filter _ hm₁
-    · use cons m B' hm'₂, cons_subset.mpr ⟨mem_cons_self _ _, hB'⟩, ?_
-      · simp_rw [Pred, filter_cons, predElement_cons_self, hm₂, ite_false, cons_eq_insert]
-        change disjUnion _ (Pred ({m} ∪ _) _) _ = _
-        rw [empty_disjUnion, wont_change B' X m hm hm'₁, hB'₂, filter_eq_self]
-        exact fun _ hx ↦ ne_of_mem_of_not_mem hx hm₁
+      simp only [filter_eq', hm₁, ite_true, ite_false]
+    /- The beginning of the other two goals is the same -/
+    all_goals
+      use cons m B' hm'₂, cons_subset.mpr ⟨mem_cons_self _ _, hB'⟩, ?_
+      simp_rw [Pred, filter_cons, predElement_cons_self, hm₂]
+      simp only [ite_false, ite_true, cons_eq_insert]
+      change disjUnion _ (Pred ({m} ∪ _) _) _ = _
+    · rw [singleton_disjUnion, cons_eq_insert, wont_change B' X m hm hm'₁, hB'₂]
+      exact insert_filter _ hm₁
+    · rw [empty_disjUnion, wont_change B' X m hm hm'₁, hB'₂, filter_eq_self]
+      exact fun _ hx ↦ ne_of_mem_of_not_mem hx hm₁
