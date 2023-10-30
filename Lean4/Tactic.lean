@@ -1,6 +1,7 @@
 import Mathlib.Tactic
 import Lean.Meta.Basic
 import Lean.Parser.Term
+import Lean4.setm.Setm
 
 /- Implementing and_then -/
 syntax tactic " and_then " tactic : tactic
@@ -165,8 +166,6 @@ def refineCore (stx : Syntax) (tagSuffix : Name) (allowNaturalHoles : Bool) : Ta
 
 -> refineCore e `refine (allowNaturalHoles := false)
 -/
-set_option trace.profiler false
-set_option pp.rawOnError false
 
 syntax "introNames" (ppSpace colGt term) : tactic
 elab_rules : tactic
