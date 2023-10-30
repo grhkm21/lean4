@@ -1,16 +1,15 @@
 import Lean4.setm.Setm
+import Mathlib.Tactic
 
-open Mathlib.Tactic
-
-/- set_option trace.Tactic.setm true -/
 /- TODO: setm ... at ... -/
 
-example : (4 + 0) - (3 + 1) = 0 := by
-  setm ?A - ?B = (_ : Nat)
+example : 4 * 2 = 8 := by
+  setm ?A * ?B = (_ : Nat)
+  unfold_let A B at *
+  clear A B hA hB
+  change 4 + 4 = 8
+  setm ?A + ?B = (_ : Nat)
   rfl
-
-/- example (h : (1 + 1) + (2 + 2) - (1 + 1) = 4) : true := by -/
-/-   setm ?A + ?B - ?A = (_ : Nat) -/
 
 example (h : 1 + 0 = 1) : 1 + 2 = 3 := by
   rewrite [Nat.add_zero] at h
