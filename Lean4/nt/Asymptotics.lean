@@ -92,7 +92,15 @@ lemma aux0' (x y : ℝ) (h : 0 < x) (h' : x ≤ y) :
   rw [integral_const 1, Measure.restrict_apply MeasurableSet.univ, univ_inter, volume_Ioc,
       smul_eq_mul, mul_one, ENNReal.toReal_ofReal (by linarith)]
 
-lemma aux1 : IsBigOWith 1 atTop (fun (x : ℝ) ↦ ⌊x⌋₊ - x) (fun _ ↦ (1 : ℝ)) := by
+lemma aux1 : ∀ (x : ℝ), 0 ≤ x → |⌊x⌋₊ - x| ≤ 1 := by
+  intro x hx
+  rw [abs_le]
+  constructor
+  · rw [le_sub_iff_add_le', ←sub_eq_add_neg, tsub_le_iff_right]
+    exact (lt_floor_add_one _).le
+  · linarith [floor_le hx]
+
+lemma aux1' : IsBigOWith 1 atTop (fun (x : ℝ) ↦ ⌊x⌋₊ - x) (fun _ ↦ (1 : ℝ)) := by
   rw [isBigOWith_iff, eventually_atTop]
   use 1
   intro x hx
@@ -102,9 +110,15 @@ lemma aux1 : IsBigOWith 1 atTop (fun (x : ℝ) ↦ ⌊x⌋₊ - x) (fun _ ↦ (1
     exact (lt_floor_add_one _).le
   · linarith [floor_le (show 0 ≤ x by linarith)]
 
-lemma aux2 : IsBigOWith 1 atTop (fun x ↦ (⌊x⌋₊ * log x) - (x * log x)) log := by
+lemma aux2 : ∀ (x : ℝ), 1 ≤ x → |⌊x⌋₊ * log x - x * log x| ≤ log x := by
+  intro x hx
+  rw [←sub_mul, abs_mul, abs_of_nonneg $ log_nonneg hx]
+  convert mul_le_mul_of_nonneg_right (aux1 x (by linarith)) (log_nonneg hx) using 1
+  rw [one_mul]
+
+lemma aux2' : IsBigOWith 1 atTop (fun x ↦ (⌊x⌋₊ * log x) - (x * log x)) log := by
   simp_rw [← sub_mul]
-  convert IsBigOWith.mul aux1 $ isBigOWith_refl log atTop using 2
+  convert IsBigOWith.mul aux1' $ isBigOWith_refl log atTop using 2
   all_goals rw [one_mul]
 
 /- Note: Use Ioc for integrals -/
@@ -133,14 +147,19 @@ lemma aux4 (x : ℝ) (a : ℕ) (ha : 1 ≤ a) (hx : a ≤ x) :
   beta_reduce
   exact h₂ $ ha'.trans ht
 
-lemma aux5 : IsBigOWith 1 atTop (fun x ↦ x - 1 - ∫ (t : ℝ) in Ioc 1 x, ↑⌊t⌋₊ / t) log := by
+lemma aux5 : ∀ x : ℝ, 1 ≤ x → |x - 1 - (∫ (t : ℝ) in Ioc 1 x, ↑⌊t⌋₊ / t)| ≤ log x := by
+  intro x hx
+  rw [abs_of_nonneg $ aux0' 1 x zero_lt_one hx]
+  convert aux4 x 1 (le_refl _) (by exact_mod_cast hx) using 1
+  · rw [cast_one]
+  · rw [cast_one, log_one, sub_zero]
+
+lemma aux5' : IsBigOWith 1 atTop (fun x ↦ x - 1 - ∫ (t : ℝ) in Ioc 1 x, ↑⌊t⌋₊ / t) log := by
   rw [isBigOWith_iff, eventually_atTop]
   use 1
   intro x hx
-  rw [norm_of_nonneg $ log_nonneg hx, one_mul, norm_of_nonneg $ aux0' 1 x zero_lt_one hx]
-  · convert aux3 x 1 (le_refl _) (by exact_mod_cast hx) using 1
-    · rw [cast_one]
-    · rw [cast_one, log_one, sub_zero]
+  rw [norm_of_nonneg $ log_nonneg hx, one_mul]
+  exact aux5 x hx
 
 lemma aux6 (n : ℕ) : ∫ (x : ℝ) in Ioc (1 : ℝ) ↑(n + 1), ⌊x⌋₊ / x =
     n * (log ↑(n + 1) - log n) + ∫ (x : ℝ) in Ioc (1 : ℝ) n, ⌊x⌋₊ / x := by
@@ -174,17 +193,12 @@ lemma aux7 (n : ℕ) : ∫ (x : ℝ) in Ioc (1 : ℝ) ↑(n + 1), ⌊x⌋₊ / x
   · norm_num
   · rw [aux6 _, hn]
     push_cast
-    conv =>
-      rhs
-      rw [←Ico_succ_right, Finset.sum_Ico_succ_top (by linarith), Ico_succ_right]
+    conv => rhs ; rw [←Ico_succ_right, Finset.sum_Ico_succ_top (by linarith), Ico_succ_right]
     push_cast
     ring_nf
     congr
     funext x
     rw [mul_sub, add_comm]
-
-set_option profiler true
-set_option trace.profiler true
 
 lemma aux8 : 0 ≤ (∫ (x : ℝ) in Ioc 1 7, ↑⌊x⌋₊ / x) - 7 + log 7 := by
   have h₁ := aux7 6
@@ -206,22 +220,20 @@ lemma aux8 : 0 ≤ (∫ (x : ℝ) in Ioc 1 7, ↑⌊x⌋₊ / x) - 7 + log 7 := 
   all_goals norm_num
   exact le_of_lt $ exp_pos 1
 
-lemma aux9 : IsBigOWith 1 atTop (fun x ↦ x - ∫ (t : ℝ) in Ioc 1 x, ↑⌊t⌋₊ / t) log := by
-  simp_rw [isBigOWith_iff, eventually_atTop, one_mul]
-  use 7
+lemma aux9 : ∀ x : ℝ, 7 ≤ x → |x - ∫ (t : ℝ) in Ioc 1 x, ↑⌊t⌋₊ / t| ≤ log x := by
   intro x hx
   have i₁ : Ioc 1 x = (Ioc 1 7) ∪ (Ioc 7 x) := by rw [Ioc_union_Ioc_eq_Ioc] <;> linarith
   have i₃ : Ioc 1 7 ⊆ Ioc 1 x := Ioc_subset_Ioc_right hx
   have i₄ : Ioc 7 x ⊆ Ioc 1 x := Ioc_subset_Ioc_left (by linarith)
   have i₅ : (1 : ℝ) ≤ 7 := by norm_num
-  rw [norm_of_nonneg $ log_nonneg (by linarith), norm_of_nonneg]
+  rw [abs_of_nonneg]
   · suffices h : x - 7 - ∫ (t : ℝ) in Ioc 7 x, ⌊t⌋₊ / t ≤ log x - log 7
     · replace h := _root_.le_sub_iff_add_le.mp h
       apply le_trans _ h
       rw [i₁, integral_union Ioc_disjoint_Ioc_same measurableSet_Ioc]
       · rw [←sub_sub]
         have h : ∀ A B C D E : ℝ, A - B - C ≤ A - D - C + E ↔ 0 ≤ B - D + E := by
-          intro A B C D E ; constructor <;> intro h <;> linarith [h]
+          intro _ _ _ _ _ ; constructor <;> intro h <;> linarith [h]
         rw [h]
         exact aux8
       all_goals
@@ -233,19 +245,35 @@ lemma aux9 : IsBigOWith 1 atTop (fun x ↦ x - ∫ (t : ℝ) in Ioc 1 x, ↑⌊t
     · exact_mod_cast hx
   · apply (aux0' 1 x zero_lt_one _).trans
     all_goals linarith
-  done
 
-theorem log_asympt_eff :
+lemma aux9' : IsBigOWith 1 atTop (fun x ↦ x - ∫ (t : ℝ) in Ioc 1 x, ↑⌊t⌋₊ / t) log := by
+  simp_rw [isBigOWith_iff, eventually_atTop, one_mul]
+  use 7
+  intro x hx
+  rw [norm_of_nonneg $ log_nonneg (by linarith)]
+  exact aux9 x hx
+
+theorem sum_log_asympt_eff :
     IsBigOWith 2 atTop (fun x ↦ (summatory (fun n ↦ log n) 1 x) - (x * log x - x)) log := by
   rw [isBigOWith_iff, eventually_atTop]
   simp_rw [norm_eq_abs] /- not required -/
-  use 100
+  use 7
   intro x hx
-  rw [summatory, partial_summation_coef_one log (fun x ↦ x⁻¹)]
+  rw [summatory, partial_summation_coef_one_Ioc log (fun x ↦ x⁻¹)]
   all_goals push_cast at *
   · simp only [cast_one, sub_add_cancel, ←one_div, mul_one_div]
-    sorry
+    rw [abs_of_nonneg $ log_nonneg (by linarith)]
+    rw [show ∀ a b c d : ℝ, (a - b) - (c - d) = (a - c) + (d - b) by intro _ _ _ _ ; ring, two_mul]
+    apply (abs_add _ _).trans
+    apply _root_.add_le_add
+    · exact aux2 x (by linarith)
+    · exact aux9 x hx
   · linarith
   · intro t ⟨ht, _⟩
     exact hasDerivAt_log (by linarith)
-  /- · apply integrableOn_Ioc_inv -/
+  · apply integrableOn_Ioc_inv _ _ zero_lt_one (by linarith)
+
+theorem sum_log_asympt :
+    (fun x ↦ (summatory (fun n ↦ log n) 1 x) - (x * log x - x)) =O[atTop] log := by
+  rw [IsBigO]
+  exact ⟨2, log_asympt_eff⟩

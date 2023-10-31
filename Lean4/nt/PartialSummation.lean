@@ -44,12 +44,12 @@ lemma summatory_one {𝕜 : Type*} [IsROrC 𝕜] (k : ℕ) (n : ℝ) (h : k ≤ 
   change Measurable ((fun y => ∑ i in Finset.Icc k y, a i) ∘ _)
   exact measurable_from_nat.comp measurable_floor
 
-lemma abs_summatory_le_sum [h : SeminormedAddCommGroup M] (a : ℕ → M) {k : ℕ} {x : ℝ} :
+lemma abs_summatory_le_sum {M : Type*} [h : SeminormedAddCommGroup M] (a : ℕ → M) {k : ℕ} {x : ℝ} :
     ‖summatory a k x‖ ≤ ∑ i in Finset.Icc k ⌊x⌋₊, ‖a i‖ := by
   rw [summatory]
   exact @norm_sum_le _ _ h _ _
 
-lemma abs_summatory_bound [h : SeminormedAddCommGroup M] (k z : ℕ)
+lemma abs_summatory_bound {M : Type*} [h : SeminormedAddCommGroup M] (a : ℕ → M) (k z : ℕ)
     {x : ℝ} (hx : x ≤ z) : ‖summatory a k x‖ ≤ ∑ i in Finset.Icc k z, ‖a i‖ :=
   (abs_summatory_le_sum a).trans
     (Finset.sum_le_sum_of_subset_of_nonneg
