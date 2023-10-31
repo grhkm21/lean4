@@ -9,9 +9,6 @@ import Lean4.nt.PartialSummation
 open Nat hiding log
 open Set Real BigOperators MeasureTheory Filter Asymptotics
 
-#check intervalIntegral.intervalIntegrable_inv
-#check intervalIntegrable_iff
-
 lemma h₁ {x : ℝ} {a : ℕ} (h : a ≤ x) : x = a + ∫ (t : ℝ) in Ioc (a : ℝ) x, 1 := by
   rw [integral_const, Measure.restrict_apply MeasurableSet.univ, univ_inter, volume_Ioc,
       smul_eq_mul, mul_one, ENNReal.toReal_ofReal] <;> linarith
@@ -89,6 +86,12 @@ lemma aux0 (x y : ℝ) (h : 0 < x) (h' : x ≤ y) :
   rw [h₂ $ h.trans ht, le_div_iff (by linarith), Pi.zero_apply, zero_mul]
   exact Int.fract_nonneg t
 
+lemma aux0' (x y : ℝ) (h : 0 < x) (h' : x ≤ y) :
+    0 ≤ (y - x) - ∫ (t : ℝ) in Ioc x y, ↑⌊t⌋₊ / t := by
+  convert aux0 x y h h'
+  rw [integral_const 1, Measure.restrict_apply MeasurableSet.univ, univ_inter, volume_Ioc,
+      smul_eq_mul, mul_one, ENNReal.toReal_ofReal (by linarith)]
+
 lemma aux1 : IsBigOWith 1 atTop (fun (x : ℝ) ↦ ⌊x⌋₊ - x) (fun _ ↦ (1 : ℝ)) := by
   rw [isBigOWith_iff, eventually_atTop]
   use 1
@@ -99,13 +102,13 @@ lemma aux1 : IsBigOWith 1 atTop (fun (x : ℝ) ↦ ⌊x⌋₊ - x) (fun _ ↦ (1
     exact (lt_floor_add_one _).le
   · linarith [floor_le (show 0 ≤ x by linarith)]
 
-lemma aux : IsBigOWith 1 atTop (fun x ↦ (⌊x⌋₊ * log x) - (x * log x)) log := by
+lemma aux2 : IsBigOWith 1 atTop (fun x ↦ (⌊x⌋₊ * log x) - (x * log x)) log := by
   simp_rw [← sub_mul]
   convert IsBigOWith.mul aux1 $ isBigOWith_refl log atTop using 2
   all_goals rw [one_mul]
 
 /- Note: Use Ioc for integrals -/
-lemma aux2 (x : ℝ) (a : ℕ) (ha : 0 < a) (hx : a ≤ x) :
+lemma aux3 (x : ℝ) (a : ℕ) (ha : 0 < a) (hx : a ≤ x) :
     ∫ (t : ℝ) in Ioc (a : ℝ) x, Int.fract t / t ≤ log x - log a := by
   have ha' : 0 < (a : ℝ) := by exact_mod_cast ha
   rw [←log_div, ←integral_inv_of_pos, intervalIntegral.intervalIntegral_eq_integral_uIoc, if_pos,
@@ -119,36 +122,22 @@ lemma aux2 (x : ℝ) (a : ℕ) (ha : 0 < a) (hx : a ≤ x) :
     rw [←one_div]
     exact h₃ (by linarith)
 
-lemma aux3 (x : ℝ) (a : ℕ) (ha : 1 ≤ a) (hx : a ≤ x) :
+lemma aux4 (x : ℝ) (a : ℕ) (ha : 1 ≤ a) (hx : a ≤ x) :
     x - a - ∫ (t : ℝ) in Ioc (a : ℝ) x, ⌊t⌋₊ / t ≤ log x - log a := by
   have ha' : 0 < (a : ℝ) := by exact_mod_cast ha
   nth_rw 1 [h₁ hx, show ∀ a b c : ℝ, (a + b) - a - c = b - c by intro _ _ _ ; ring_nf]
   rw [←integral_sub (integrable_const 1) (integrableOn_Ioc_floor_div _ _ ha' hx)]
-  convert aux2 x a ha hx using 1
+  convert aux3 x a ha hx using 1
   rw [set_integral_congr measurableSet_Ioc]
   intro t ⟨ht, _⟩
   beta_reduce
   exact h₂ $ ha'.trans ht
 
-lemma aux4 (x : ℝ) (hx : 1 ≤ x) : 0 ≤ x - 1 - ∫ (t : ℝ) in Ioc 1 x, ↑⌊t⌋₊ / t := by
-  all_goals try linarith
-  have h₁ := @h₁ x 1
-  push_cast at h₁
-  nth_rw 1 [h₁ hx, show ∀ a b c : ℝ, (a + b) - a - c = b - c by intro _ _ _ ; ring_nf]
-  rw [←integral_sub (integrable_const _) $ integrableOn_Ioc_floor_div _ _ zero_lt_one hx]
-  apply integral_nonneg_of_ae
-  rw [EventuallyLE, ae_restrict_iff' measurableSet_Ioc]
-  apply eventually_of_forall
-  intro t ⟨ht, _⟩
-  rw [h₂, le_div_iff, Pi.zero_apply, zero_mul]
-  exact Int.fract_nonneg t
-  all_goals linarith
-
 lemma aux5 : IsBigOWith 1 atTop (fun x ↦ x - 1 - ∫ (t : ℝ) in Ioc 1 x, ↑⌊t⌋₊ / t) log := by
   rw [isBigOWith_iff, eventually_atTop]
   use 1
   intro x hx
-  rw [norm_of_nonneg $ log_nonneg hx, one_mul, norm_of_nonneg $ aux4 x hx]
+  rw [norm_of_nonneg $ log_nonneg hx, one_mul, norm_of_nonneg $ aux0' 1 x zero_lt_one hx]
   · convert aux3 x 1 (le_refl _) (by exact_mod_cast hx) using 1
     · rw [cast_one]
     · rw [cast_one, log_one, sub_zero]
@@ -194,6 +183,9 @@ lemma aux7 (n : ℕ) : ∫ (x : ℝ) in Ioc (1 : ℝ) ↑(n + 1), ⌊x⌋₊ / x
     funext x
     rw [mul_sub, add_comm]
 
+set_option profiler true
+set_option trace.profiler true
+
 lemma aux8 : 0 ≤ (∫ (x : ℝ) in Ioc 1 7, ↑⌊x⌋₊ / x) - 7 + log 7 := by
   have h₁ := aux7 6
   norm_num at h₁
@@ -219,7 +211,6 @@ lemma aux9 : IsBigOWith 1 atTop (fun x ↦ x - ∫ (t : ℝ) in Ioc 1 x, ↑⌊t
   use 7
   intro x hx
   have i₁ : Ioc 1 x = (Ioc 1 7) ∪ (Ioc 7 x) := by rw [Ioc_union_Ioc_eq_Ioc] <;> linarith
-  have i₂ : Disjoint (Ioc 1 7) (Ioc 7 x) := Ioc_disjoint_Ioc_same
   have i₃ : Ioc 1 7 ⊆ Ioc 1 x := Ioc_subset_Ioc_right hx
   have i₄ : Ioc 7 x ⊆ Ioc 1 x := Ioc_subset_Ioc_left (by linarith)
   have i₅ : (1 : ℝ) ≤ 7 := by norm_num
@@ -227,7 +218,7 @@ lemma aux9 : IsBigOWith 1 atTop (fun x ↦ x - ∫ (t : ℝ) in Ioc 1 x, ↑⌊t
   · suffices h : x - 7 - ∫ (t : ℝ) in Ioc 7 x, ⌊t⌋₊ / t ≤ log x - log 7
     · replace h := _root_.le_sub_iff_add_le.mp h
       apply le_trans _ h
-      rw [i₁, integral_union i₂ measurableSet_Ioc]
+      rw [i₁, integral_union Ioc_disjoint_Ioc_same measurableSet_Ioc]
       · rw [←sub_sub]
         have h : ∀ A B C D E : ℝ, A - B - C ≤ A - D - C + E ↔ 0 ≤ B - D + E := by
           intro A B C D E ; constructor <;> intro h <;> linarith [h]
@@ -237,15 +228,24 @@ lemma aux9 : IsBigOWith 1 atTop (fun x ↦ x - ∫ (t : ℝ) in Ioc 1 x, ↑⌊t
         apply IntegrableOn.mono_set $ integrableOn_Ioc_floor_div _ _ zero_lt_one $ i₅.trans hx
       exact i₃
       exact i₄
-    apply aux3
+    apply aux4
     · linarith
     · exact_mod_cast hx
-  · apply (aux4 x _).trans
+  · apply (aux0' 1 x zero_lt_one _).trans
     all_goals linarith
   done
 
 theorem log_asympt_eff :
     IsBigOWith 2 atTop (fun x ↦ (summatory (fun n ↦ log n) 1 x) - (x * log x - x)) log := by
-  sorry
-
-example {a b c : ℝ} : |a + b + c| ≤ |a| + |b| + |c| := by exact?
+  rw [isBigOWith_iff, eventually_atTop]
+  simp_rw [norm_eq_abs] /- not required -/
+  use 100
+  intro x hx
+  rw [summatory, partial_summation_coef_one log (fun x ↦ x⁻¹)]
+  all_goals push_cast at *
+  · simp only [cast_one, sub_add_cancel, ←one_div, mul_one_div]
+    sorry
+  · linarith
+  · intro t ⟨ht, _⟩
+    exact hasDerivAt_log (by linarith)
+  /- · apply integrableOn_Ioc_inv -/

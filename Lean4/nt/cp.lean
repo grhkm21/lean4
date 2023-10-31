@@ -1,26 +1,33 @@
 import Mathlib.Tactic
-import Mathlib.Data.Complex.ExponentialBounds
-import Mathlib.Analysis.SpecialFunctions.Pow.Real
 
-open Real BigOperators
+instance KevinsDecidableInstance (n : ℕ) (R : ℕ → Prop) (h : ∀ a ≤ n, Decidable (R a)) : Decidable (∀ a ≤ n, R a) :=
+match n, R, h with
+| 0, _, h =>
+  match h 0 $ Nat.le_refl 0 with
+  | isFalse h' => isFalse (h' $ · 0 $ Nat.le_refl 0)
+  | isTrue h' => isTrue (fun _ ha ↦ (Nat.le_zero.mp ha).symm ▸ h')
+| (n + 1), R, h =>
+  match KevinsDecidableInstance n R (fun a ha ↦ h a $ Nat.le_step ha) with
+  | isFalse h' => isFalse fun ht ↦ h' fun a ha ↦ ht a $ Nat.le_step ha
+  | isTrue h' =>
+    match h (n + 1) $ Nat.le_refl _ with
+    | isFalse p => isFalse fun ha ↦ p $ ha (n + 1) $ Nat.le_refl _
+    | isTrue p => isTrue fun _ ha ↦ ha.lt_or_eq_dec.elim (h' _ $ Nat.le_of_lt_succ ·) (·.symm ▸ p)
 
-example : 0 ≤ ∑ x in Finset.Icc (1 : ℕ) 6, x * (log (x + 1) - log x) - 7 + log 7 := by
-  have : Finset.Icc (1 : ℕ) 6 = {1, 2, 3, 4, 5, 6} := by rfl
-  simp [this]
-  ring_nf
-  rw [add_sub, add_sub]
-  repeat rw [←sub_eq_add_neg]
-  iterate 4 rw [sub_sub, ←log_mul]
-  nth_rw 3 [show (7 : ℝ) = (7 : ℕ) by rfl]
-  rw [mul_comm (log _) _, add_comm_sub, ←log_pow, ←log_div]
-  all_goals try norm_num
-  rw [le_log_iff_exp_le]
-  /- annoying issue: There's both (a : ℝ) ^ (b : ℕ) and (a : ℝ) ^ (b : ℝ) -/
-  let h := @rpow_le_rpow _ _ (7 : ℕ) ?_ (tsub_le_iff_left.mp $ (abs_le.mp exp_one_near_10).right) ?_
-  rw [exp_one_rpow, rpow_nat_cast] at h
-  apply h.trans
-  all_goals norm_num
-  exact le_of_lt $ exp_pos 1
+/- instance decidableBallLT : -/
+/-   ∀ (n : Nat) (P : ∀ k, k < n → Prop) [∀ n h, Decidable (P n h)], Decidable (∀ n h, P n h) -/
+/- | 0, _, _ => isTrue fun _ => (by cases ·) -/
+/- | (n+1), P, H => -/
+/-   match decidableBallLT n (P · <| Nat.lt_succ_of_lt ·) with -/
+/-   | isFalse h => isFalse (h fun _ _ => · _ _) -/
+/-   | isTrue h => -/
+/-     match H n Nat.le.refl with -/
+/-     | isFalse p => isFalse (p <| · _ _) -/
+/-     | isTrue p => isTrue fun _ h' => (Nat.le_of_lt_succ h').lt_or_eq_dec.elim (h _) (· ▸ p) -/
 
-example {a b : ℝ} : a - b = a + (-b) := by
-  change _ = _ - _
+#check Nat.decidableForallFin
+#check Nat.decidableBallLe
+#check Nat.decidableBallLT
+#check decidable_of_iff
+#check decidable_of_decidable_of_iff
+#check decidable_of_decidable_of_eq

@@ -39,10 +39,6 @@ lemma summatory_one {𝕜 : Type*} [IsROrC 𝕜] (k : ℕ) (n : ℝ) (h : k ≤ 
       add_sub_right_comm]
   rw [← floor_add_one, le_floor_iff] <;> linarith
 
-example {n : ℝ} (h : 0 ≤ n) : ⌊n⌋₊ + 1 = ⌊n + 1⌋₊ := (floor_add_one h).symm
-
-variable {M : Type*} (a : ℕ → M)
-
 @[measurability] lemma measurable_summatory [AddCommMonoid M] [MeasurableSpace M] {k : ℕ} :
     Measurable (summatory a k) := by
   change Measurable ((fun y => ∑ i in Finset.Icc k y, a i) ∘ _)
@@ -59,27 +55,33 @@ lemma abs_summatory_bound [h : SeminormedAddCommGroup M] (k z : ℕ)
     (Finset.sum_le_sum_of_subset_of_nonneg
       (Finset.Icc_subset_Icc le_rfl (floor_le_of_le hx)) (by simp))
 
-lemma partial_summation_integrable {𝕜 : Type*} [IsROrC 𝕜] (a : ℕ → 𝕜) {f : ℝ → 𝕜} {x y : ℝ}
-    {k : ℕ} (hf' : IntegrableOn f (Icc x y)) :
-    IntegrableOn (summatory a k * f) (Icc x y) := by
+lemma partial_summation_integrable_Ioc {𝕜 : Type*} [IsROrC 𝕜] (a : ℕ → 𝕜) {f : ℝ → 𝕜} {x y : ℝ}
+    {k : ℕ} (hf' : IntegrableOn f (Ioc x y)) :
+    IntegrableOn (summatory a k * f) (Ioc x y) := by
   let b := ∑ i in Finset.Icc k ⌈y⌉₊, norm (a i)
-  have : IntegrableOn (b • f) (Icc x y) := by exact Integrable.smul b hf'
+  have : IntegrableOn (b • f) (Ioc x y) := by exact Integrable.smul b hf'
   refine this.integrable.mono ?_ ?_
   · exact AEStronglyMeasurable.mul (measurable_summatory a).aestronglyMeasurable hf'.1
-  · rw [ae_restrict_iff' (measurableSet_Icc : MeasurableSet (Icc x _))]
+  · rw [ae_restrict_iff' (measurableSet_Ioc : MeasurableSet (Ioc x _))]
     refine eventually_of_forall (fun z hz ↦ ?_)
     rw [Pi.mul_apply, norm_mul, Pi.smul_apply, norm_smul]
     refine mul_le_mul_of_nonneg_right ((abs_summatory_bound _ _ ⌈y⌉₊ ?_).trans ?_) (norm_nonneg _)
     · exact hz.2.trans (le_ceil y)
-    · rw [norm_eq_abs]
-      exact le_abs_self b
+    · apply le_norm_self
 
-lemma myLemma {a b : ℝ} (h : x ∈ uIcc a b) (h' : a ≤ b) : a ≤ x ∧ x ≤ b := by
-  rw [uIcc_eq_union, mem_union] at h
-  cases' h with h h
-  · exact h
-  · constructor <;> linarith [h.left, h.right]
-  done
+lemma partial_summation_integrable_Ico {𝕜 : Type*} [IsROrC 𝕜] (a : ℕ → 𝕜) {f : ℝ → 𝕜} {x y : ℝ}
+    {k : ℕ} (hf' : IntegrableOn f (Ico x y)) :
+    IntegrableOn (summatory a k * f) (Ico x y) := by
+  let b := ∑ i in Finset.Icc k ⌈y⌉₊, norm (a i)
+  have : IntegrableOn (b • f) (Ico x y) := by exact Integrable.smul b hf'
+  refine this.integrable.mono ?_ ?_
+  · exact AEStronglyMeasurable.mul (measurable_summatory a).aestronglyMeasurable hf'.1
+  · rw [ae_restrict_iff' (measurableSet_Ico)]
+    refine eventually_of_forall (fun z hz ↦ ?_)
+    rw [Pi.mul_apply, norm_mul, Pi.smul_apply, norm_smul]
+    refine mul_le_mul_of_nonneg_right ((abs_summatory_bound _ _ ⌈y⌉₊ ?_).trans ?_) (norm_nonneg _)
+    · exact le_trans hz.2.le (le_ceil y)
+    · apply le_norm_self
 
 lemma summatory_floor_self {𝕜 : Type*} [IsROrC 𝕜] (a : ℕ → 𝕜) (k : ℕ) : summatory a k k = a k := by
   rw [summatory, floor_coe, Finset.Icc_self, Finset.sum_singleton]
@@ -88,37 +90,58 @@ lemma summatory_floor_self {𝕜 : Type*} [IsROrC 𝕜] (a : ℕ → 𝕜) (k : 
 lemma eqOn_mul_right [Mul β] {f g : α → β} (h : α → β) (h' : EqOn f g S) : EqOn (f * h) (g * h) S :=
   fun _ hx ↦ by simp only [Pi.mul_apply, h' hx]
 
-/- ∑ x in Finset.Ico k N, ∫ (x : ℝ) in Ico (↑x) (↑x + 1), f x -/
-theorem sum_integral_Ico
+theorem sum_integral_Ioc
     {𝕜 : Type*} [IsROrC 𝕜]
     {k N : ℕ} (hN : k ≤ N)
-    (f : ℝ → 𝕜) (hf : IntegrableOn f (Icc k N)) :
-    ∑ x in Finset.Ico k N, ∫ t in Icc (x : ℝ) (x + 1), f t = ∫ t in Icc (k : ℝ) N, f t := by
+    (f : ℝ → 𝕜) (hf : IntegrableOn f (Ioc k N)) :
+    ∑ x in Finset.Ico k N, ∫ t in Ioc (x : ℝ) (x + 1), f t = ∫ t in Ioc (k : ℝ) N, f t := by
   revert hf
   refine le_induction ?_ ?_ N hN
   · intro
-    rw [Finset.Ico_self, Icc_self, integral_singleton, volume_singleton, ENNReal.zero_toReal,
-        zero_smul]
+    rw [Finset.Ico_self, Ioc_self, integral_empty]
     rfl
   · intro n h hf hi
     have h₁ : (k : ℝ) ≤ (n : ℝ) := by norm_cast
     have h₂ : (n : ℝ) ≤ (n : ℝ) + 1 := by linarith
-    have h₃ := IntegrableOn.mono_set hi $ Icc_subset_Icc_right $ (@cast_add_one ℝ _ n).symm ▸ h₂
-    have h₄ := IntegrableOn.mono_set hi $ Icc_subset_Icc_left h₁
+    have h₃ := IntegrableOn.mono_set hi $ Ioc_subset_Ioc_right $ (@cast_add_one ℝ _ n).symm ▸ h₂
+    have h₄ := IntegrableOn.mono_set hi $ Ioc_subset_Ioc_left h₁
     rw [Finset.sum_Ico_succ_top h, hf h₃, ← integral_union_ae]
-    save
-    · rw [Icc_union_Icc_eq_Icc, cast_add, cast_one] ; all_goals try simp only [h₁, h₂, h]
-    · rw [AEDisjoint, Icc_inter_Icc_eq_singleton h₁ h₂, volume_singleton]
+    · rw [Ioc_union_Ioc_eq_Ioc, cast_add, cast_one] ; all_goals try simp only [h₁, h₂, h]
+    · rw [AEDisjoint, Ioc_inter_Ioc, sup_eq_right.mpr h₁, inf_eq_left.mpr h₂, Ioc_self,
+          measure_empty]
     · measurability
     · exact h₃
     · exact_mod_cast h₄
 
-theorem partial_summation_nat {𝕜 : Type*} [IsROrC 𝕜] (a : ℕ → 𝕜) (f f' : ℝ → 𝕜)
+theorem sum_integral_Ico
+    {𝕜 : Type*} [IsROrC 𝕜]
+    {k N : ℕ} (hN : k ≤ N)
+    (f : ℝ → 𝕜) (hf : IntegrableOn f (Ico k N)) :
+    ∑ x in Finset.Ico k N, ∫ t in Ico (x : ℝ) (x + 1), f t = ∫ t in Ico (k : ℝ) N, f t := by
+  revert hf
+  refine le_induction ?_ ?_ N hN
+  · intro
+    rw [Finset.Ico_self, Ico_self, integral_empty]
+    rfl
+  · intro n h hf hi
+    have h₁ : (k : ℝ) ≤ (n : ℝ) := by norm_cast
+    have h₂ : (n : ℝ) ≤ (n : ℝ) + 1 := by linarith
+    have h₃ := IntegrableOn.mono_set hi $ Ico_subset_Ico_right $ (@cast_add_one ℝ _ n).symm ▸ h₂
+    have h₄ := IntegrableOn.mono_set hi $ Ico_subset_Ico_left h₁
+    rw [Finset.sum_Ico_succ_top h, hf h₃, ← integral_union_ae]
+    · rw [Ico_union_Ico_eq_Ico, cast_add, cast_one] ; all_goals try simp only [h₁, h₂, h]
+    · rw [AEDisjoint, Ico_inter_Ico, sup_eq_right.mpr h₁, inf_eq_left.mpr h₂, Ico_self,
+          measure_empty]
+    · measurability
+    · exact h₃
+    · exact_mod_cast h₄
+
+theorem partial_summation_nat_Ioc {𝕜 : Type*} [IsROrC 𝕜] (a : ℕ → 𝕜) (f f' : ℝ → 𝕜)
     {k : ℕ} {N : ℕ} (hN : k ≤ N)
     (hf : ∀ i ∈ Icc (k : ℝ) N, HasDerivAt f (f' i) i)
-    (hf' : IntegrableOn f' (Icc k N)) :
+    (hf' : IntegrableOn f' (Ioc k N)) :
     ∑ n in Finset.Icc k N, a n * f n =
-      summatory a k N * f N - ∫ t in Icc (k : ℝ) N, summatory a k t * f' t := by
+      summatory a k N * f N - ∫ t in Ioc (k : ℝ) N, summatory a k t * f' t := by
   rw [←Nat.Ico_succ_right]
   revert hf hf'
   refine le_induction ?_ ?_ N hN
@@ -126,21 +149,23 @@ theorem partial_summation_nat {𝕜 : Type*} [IsROrC 𝕜] (a : ℕ → 𝕜) (f
     simp [summatory_nat]
   · intro N hN₁ ih hf hf'
     have hN₂ : (N : ℝ) ≤ N + 1 := le_of_lt $ lt_add_one _
-    have : Icc (k : ℝ) (N + 1) = Icc (k : ℝ) N ∪ Icc N (N + 1) :=
+    have ih₁ : Icc (k : ℝ) (N + 1) = Icc (k : ℝ) N ∪ Icc N (N + 1) :=
       (Icc_union_Icc_eq_Icc (cast_le.mpr hN₁) hN₂).symm
-    simp [this, or_imp, forall_and] at ih hf hf' ⊢
+    have ih₂ : Ioc (k : ℝ) (N + 1) = Ioc (k : ℝ) N ∪ Ioc N (N + 1) :=
+      (Ioc_union_Ioc_eq_Ioc (cast_le.mpr hN₁) hN₂).symm
+    simp [ih₁, ih₂, or_imp, forall_and] at ih hf hf' ⊢
     specialize ih hf.1 hf'.1
     have hN₃ := hN₁.trans (@le_self_add _ _ _ 1)
     rw [Finset.sum_Ico_succ_top hN₃, ih, summatory_succ _ _ _ hN₃, add_mul, add_sub_assoc,
          add_comm, cast_add_one, add_right_inj, eq_comm, sub_eq_sub_iff_sub_eq_sub, ←mul_sub,
-         integral_union_ae, add_sub_cancel',
-         ←set_integral_congr_set_ae (Ico_ae_eq_Icc' volume_singleton)]
+         integral_union_ae, add_sub_cancel']
     rotate_left
-    · rw [AEDisjoint, Icc_inter_Icc_eq_singleton _ hN₂, volume_singleton]
-      rwa [cast_le]
-    · exact measurableSet_Icc.nullMeasurableSet
-    · exact partial_summation_integrable a hf'.left
-    · exact partial_summation_integrable a hf'.right
+    · rw [AEDisjoint, Ioc_inter_Ioc, sup_eq_right.mpr, inf_eq_left.mpr, Ioc_self, measure_empty]
+      all_goals norm_cast
+      linarith
+    · exact measurableSet_Ioc.nullMeasurableSet
+    · exact partial_summation_integrable_Ioc a hf'.left
+    · exact partial_summation_integrable_Ioc a hf'.right
     · have : EqOn (fun x => summatory a k x * f' x)
         (fun x => summatory a k N • f' x) (Ico N (N + 1)) :=
       by
@@ -148,19 +173,21 @@ theorem partial_summation_nat {𝕜 : Type*} [IsROrC 𝕜] (a : ℕ → 𝕜) (f
         apply congrArg₂
         · apply summatory_eq_of_Ico _ hx
         · rfl
-      rw [set_integral_congr measurableSet_Ico this, integral_smul, Algebra.id.smul_eq_mul,
+      rw [set_integral_congr_set_ae (Ico_ae_eq_Ioc' volume_singleton volume_singleton).symm,
+          set_integral_congr measurableSet_Ico this, integral_smul, Algebra.id.smul_eq_mul,
           set_integral_congr_set_ae (Ico_ae_eq_Ioc' volume_singleton volume_singleton),
           ←intervalIntegral.integral_of_le hN₂, intervalIntegral.integral_eq_sub_of_hasDerivAt]
       · rw [uIcc_of_le hN₂]
         exact fun x hx ↦ hf.right x hx.left hx.right
-      · exact (intervalIntegrable_iff_integrable_Icc_of_le hN₂).mpr hf'.right
+      · exact (intervalIntegrable_iff_integrable_Ioc_of_le hN₂).mpr hf'.right
 
-theorem partial_summation_nat' {𝕜 : Type*} [IsROrC 𝕜] (a : ℕ → 𝕜) (f f' : ℝ → 𝕜)
+/- Alternate proof -/
+@[deprecated] theorem partial_summation_nat_Ioc' {𝕜 : Type*} [IsROrC 𝕜] (a : ℕ → 𝕜) (f f' : ℝ → 𝕜)
     {k : ℕ} {N : ℕ} (hN : k ≤ N)
     (hf : ∀ i ∈ Icc (k : ℝ) N, HasDerivAt f (f' i) i)
-    (hf' : IntegrableOn f' (Icc k N)) :
+    (hf' : IntegrableOn f' (Ioc k N)) :
     ∑ n in Finset.Icc k N, a n * f n =
-      summatory a k N * f N - ∫ t in Icc (k : ℝ) N, summatory a k t * f' t := by
+      summatory a k N * f N - ∫ t in Ioc (k : ℝ) N, summatory a k t * f' t := by
   by_cases hk : k = N <;> simp [hk, summatory]
 
   /- Shift index -/
@@ -184,11 +211,10 @@ theorem partial_summation_nat' {𝕜 : Type*} [IsROrC 𝕜] (a : ℕ → 𝕜) (
 
   simp only [←Finset.sum_sub_distrib, ←mul_sub]
   have ih : ∀ (h : ℕ → 𝕜) (x : ℕ), x ∈ Finset.Ico k N →
-      h x * (f ↑(x + 1) - f ↑x) = h x * ∫ t in Ico (x : ℝ) (x + 1), f' t := by
+      h x * (f ↑(x + 1) - f ↑x) = h x * ∫ t in Ioc (x : ℝ) (x + 1), f' t := by
     simp_rw [Finset.mem_Ico]
     intro h x ⟨hx₁, hx₂⟩
     rw [cast_add, cast_one]
-    rw [set_integral_congr_set_ae (Ico_ae_eq_Ioc' volume_singleton volume_singleton)]
     rw [←intervalIntegral.integral_of_le (le_of_lt $ lt_add_one _)]
     congr 1
     have hx₁' : (k : ℝ) ≤ x := cast_le.mpr hx₁
@@ -198,7 +224,8 @@ theorem partial_summation_nat' {𝕜 : Type*} [IsROrC 𝕜] (a : ℕ → 𝕜) (
       rw [uIcc_eq_union, Icc_eq_empty (not_le.mpr $ lt_add_one _), union_empty] at ht
       exact hf t ⟨by linarith [ht.left], by linarith [ht.right]⟩
     · refine (intervalIntegrable_iff_integrable_Icc_of_le $ le_of_lt $ lt_add_one _).mpr ?_
-      exact IntegrableOn.mono_set hf' $ Icc_subset_Icc hx₁' hx₂'
+      rw [integrableOn_Icc_iff_integrableOn_Ioc]
+      exact IntegrableOn.mono_set hf' $ Ioc_subset_Ioc hx₁' hx₂'
   /- ∫ (t : ℝ) in Ico (↑x) (↑x + 1), summatory a k ↑x * f' t -/
   have hs : ∀ (x : ℕ) ⦃t : ℝ⦄, t ∈ Ico (x : ℝ) (x + 1) → summatory a k x = summatory a k t := by
     intro x t ht
@@ -213,32 +240,104 @@ theorem partial_summation_nat' {𝕜 : Type*} [IsROrC 𝕜] (a : ℕ → 𝕜) (
     /- Multiply that step function into the integral -/
     simp_rw [←integral_mul_left]
     /- ... -/
+    rw [←integral_Icc_eq_integral_Ioc, integral_Icc_eq_integral_Ico]
     conv =>
       lhs ; arg 2 ; ext x
+      rw [←integral_Icc_eq_integral_Ioc, integral_Icc_eq_integral_Ico]
       conv => arg 2 ; change (fun _ ↦ summatory a k ↑x) * f'
-      rw [set_integral_congr measurableSet_Ico (eqOn_mul_right f' $ hs x),
-          ←integral_Icc_eq_integral_Ico]
-    rw [sum_integral_Ico hN _ (partial_summation_integrable a hf')]
-    refine congrArg₂ _ rfl ?_
-    ext
-    rw [Pi.mul_apply, summatory_eq_floor]
+      rw [set_integral_congr measurableSet_Ico (eqOn_mul_right f' $ hs x)]
+    rw [sum_integral_Ico hN _]
+    · refine congrArg₂ _ rfl ?_
+      ext
+      rw [Pi.mul_apply, summatory_eq_floor]
+    · apply partial_summation_integrable_Ico a
+      exact integrableOn_Icc_iff_integrableOn_Ico.mp $ integrableOn_Icc_iff_integrableOn_Ioc.mpr hf'
   done
 
-theorem partial_summation_real {𝕜 : Type*} [IsROrC 𝕜] (a : ℕ → 𝕜) (f f' : ℝ → 𝕜)
+/- I think there might be some symmetry proof, but it probably requires change of variables -/
+theorem partial_summation_nat_Ico {𝕜 : Type*} [IsROrC 𝕜] (a : ℕ → 𝕜) (f f' : ℝ → 𝕜)
+    {k : ℕ} {N : ℕ} (hN : k ≤ N)
+    (hf : ∀ i ∈ Icc (k : ℝ) N, HasDerivAt f (f' i) i)
+    (hf' : IntegrableOn f' (Ico k N)) :
+    ∑ n in Finset.Icc k N, a n * f n =
+      summatory a k N * f N - ∫ t in Ico (k : ℝ) N, summatory a k t * f' t := by
+  rw [←Nat.Ico_succ_right]
+  revert hf hf'
+  refine le_induction ?_ ?_ N hN
+  · intro _ _
+    simp [summatory_nat]
+  · intro N hN₁ ih hf hf'
+    have hN₂ : (N : ℝ) ≤ N + 1 := le_of_lt $ lt_add_one _
+    have ih₁ : Icc (k : ℝ) (N + 1) = Icc (k : ℝ) N ∪ Icc N (N + 1) :=
+      (Icc_union_Icc_eq_Icc (cast_le.mpr hN₁) hN₂).symm
+    have ih₂ : Ico (k : ℝ) (N + 1) = Ico (k : ℝ) N ∪ Ico N (N + 1) :=
+      (Ico_union_Ico_eq_Ico (cast_le.mpr hN₁) hN₂).symm
+    simp [ih₁, ih₂, or_imp, forall_and] at ih hf hf' ⊢
+    specialize ih hf.1 hf'.1
+    have hN₃ := hN₁.trans (@le_self_add _ _ _ 1)
+    rw [Finset.sum_Ico_succ_top hN₃, ih, summatory_succ _ _ _ hN₃, add_mul, add_sub_assoc,
+         add_comm, cast_add_one, add_right_inj, eq_comm, sub_eq_sub_iff_sub_eq_sub, ←mul_sub,
+         integral_union_ae, add_sub_cancel']
+    rotate_left
+    · rw [AEDisjoint, Ico_inter_Ico, sup_eq_right.mpr, inf_eq_left.mpr, Ico_self, measure_empty]
+      all_goals norm_cast
+      linarith
+    · exact measurableSet_Ico.nullMeasurableSet
+    · exact partial_summation_integrable_Ico a hf'.left
+    · exact partial_summation_integrable_Ico a hf'.right
+    · have : EqOn (fun x => summatory a k x * f' x)
+          (fun x => summatory a k N • f' x) (Ico N (N + 1)) := by
+        intro x hx
+        apply congrArg₂
+        · apply summatory_eq_of_Ico _ hx
+        · rfl
+      rw [set_integral_congr measurableSet_Ico this, integral_smul, Algebra.id.smul_eq_mul,
+          set_integral_congr_set_ae (Ico_ae_eq_Ioc' volume_singleton volume_singleton),
+          ←intervalIntegral.integral_of_le hN₂, intervalIntegral.integral_eq_sub_of_hasDerivAt]
+      · rw [uIcc_of_le hN₂]
+        exact fun x hx ↦ hf.right x hx.left hx.right
+      · apply (intervalIntegrable_iff_integrable_Icc_of_le hN₂).mpr
+        exact integrableOn_Icc_iff_integrableOn_Ico.mpr hf'.right
+
+theorem partial_summation_real_Ioc {𝕜 : Type*} [IsROrC 𝕜] (a : ℕ → 𝕜) (f f' : ℝ → 𝕜)
     {k : ℕ} {N : ℝ} (hN : k ≤ N)
     (hf : ∀ i ∈ Icc (k : ℝ) N, HasDerivAt f (f' i) i)
-    (hf' : IntegrableOn f' (Icc k N)) :
+    (hf' : IntegrableOn f' (Ioc k N)) :
     ∑ n in Finset.Icc k ⌊N⌋₊, a n * f n =
-      summatory a k N * f N - ∫ t in Icc (k : ℝ) N, summatory a k t * f' t := by
+      summatory a k N * f N - ∫ t in Ioc (k : ℝ) N, summatory a k t * f' t := by
   sorry
 
-theorem partial_summation_coef_one {𝕜 : Type*} [IsROrC 𝕜] (f f' : ℝ → 𝕜)
+theorem partial_summation_real_Ico {𝕜 : Type*} [IsROrC 𝕜] (a : ℕ → 𝕜) (f f' : ℝ → 𝕜)
     {k : ℕ} {N : ℝ} (hN : k ≤ N)
     (hf : ∀ i ∈ Icc (k : ℝ) N, HasDerivAt f (f' i) i)
-    (hf' : IntegrableOn f' (Icc k N)) :
+    (hf' : IntegrableOn f' (Ico k N)) :
+    ∑ n in Finset.Icc k ⌊N⌋₊, a n * f n =
+      summatory a k N * f N - ∫ t in Ico (k : ℝ) N, summatory a k t * f' t := by
+  sorry
+
+theorem partial_summation_coef_one_Ioc {𝕜 : Type*} [IsROrC 𝕜] (f f' : ℝ → 𝕜)
+    {k : ℕ} {N : ℝ} (hN : k ≤ N)
+    (hf : ∀ i ∈ Icc (k : ℝ) N, HasDerivAt f (f' i) i)
+    (hf' : IntegrableOn f' (Ioc k N)) :
     ∑ n in Finset.Icc k ⌊N⌋₊, f n =
-      (⌊N⌋₊ - k + 1) * f N - ∫ t in Icc (k : ℝ) N, (⌊t⌋₊ - k + 1) * f' t := by
-  have := partial_summation_real (fun _ ↦ (1 : 𝕜)) f f' hN hf hf'
+      (⌊N⌋₊ - k + 1) * f N - ∫ t in Ioc (k : ℝ) N, (⌊t⌋₊ - k + 1) * f' t := by
+  have := partial_summation_real_Ioc (fun _ ↦ (1 : 𝕜)) f f' hN hf hf'
+  simp only [one_mul] at this
+  rw [this, summatory_one k N hN]
+  congr 1
+  apply set_integral_congr
+  · measurability
+  · intro t ht
+    beta_reduce
+    rw [summatory_one _ _ $ le_of_lt ht.left]
+
+theorem partial_summation_coef_one_Ico {𝕜 : Type*} [IsROrC 𝕜] (f f' : ℝ → 𝕜)
+    {k : ℕ} {N : ℝ} (hN : k ≤ N)
+    (hf : ∀ i ∈ Icc (k : ℝ) N, HasDerivAt f (f' i) i)
+    (hf' : IntegrableOn f' (Ico k N)) :
+    ∑ n in Finset.Icc k ⌊N⌋₊, f n =
+      (⌊N⌋₊ - k + 1) * f N - ∫ t in Ico (k : ℝ) N, (⌊t⌋₊ - k + 1) * f' t := by
+  have := partial_summation_real_Ico (fun _ ↦ (1 : 𝕜)) f f' hN hf hf'
   simp only [one_mul] at this
   rw [this, summatory_one k N hN]
   congr 1
