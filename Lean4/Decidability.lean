@@ -20,3 +20,9 @@ instance ApparentlyICanNameThis {T : Finset ℚ} : Coe T ℚ where
 
 #eval MyProp S
 #eval MyProp ({1, 2, 3, 4, 5} : Finset ℚ)
+
+variable (n : ℕ) (R : ℕ → Prop) (h : ∀ a ≤ n, Decidable (R a)) in
+instance : Decidable (∀ a ≤ n, R a) := by
+  let R' := fun a (_ : a ≤ n) ↦ R a
+  have : Decidable (∀ a ha, R' a ha) := @Nat.decidableBallLe _ _ h
+  exact decidable_of_iff (∀ a ha, R' a ha) (by rfl)
