@@ -4,25 +4,20 @@ import Mathlib.RingTheory.Polynomial.Basic
 
 open Nat BigOperators Finset Polynomial
 
-lemma sum_ite_iff_eq [DecidableEq α] [AddCommMonoid β]
-    {p : α → Prop} [DecidablePred p]
-    {f : α → β} {a : α} {s : Finset α}
-    (h : ∀ x ∈ s, p x ↔ x = a) :
+lemma sum_ite_iff_eq [DecidableEq α] [AddCommMonoid β] [DecidablePred p]
+    {f : α → β} {a : α} {s : Finset α} (h : ∀ x ∈ s, p x ↔ x = a) :
     (∑ x in s, if p x then f x else 0) = (if a ∈ s then f a else 0) := by
   rw [sum_congr rfl (g := fun x ↦ if x = a then f x else 0)]
   · rw [sum_ite_eq']
   · intro x hx
     simp only [h x hx]
 
-lemma Int.modEq_iff_ZMod_eq {p : ℕ} {a b : ℤ} : a ≡ b [ZMOD p] ↔ (a : ZMod p) = (b : ZMod p) := by
-  rw [Int.modEq_iff_dvd, ZMod.int_cast_eq_int_cast_iff_dvd_sub]
-
 variable {n k p : ℕ} [hp : Fact p.Prime]
 
 theorem lucas : choose n k ≡ choose (n % p) (k % p) * choose (n / p) (k / p) [ZMOD p] := by
   have decompose : ((X : (ZMod p)[X]) + 1) ^ n = (X + 1) ^ (n % p) * (X ^ p + 1) ^ (n / p) := by
     nth_rw 1 [←mod_add_div n p, pow_add, pow_mul, add_pow_char (ZMod p)[X] (p := p), one_pow]
-  simp only [Int.modEq_iff_ZMod_eq, Int.cast_mul, Int.cast_ofNat, ←coeff_X_add_one_pow _ n k]
+  simp only [←ZMod.int_cast_eq_int_cast_iff, Int.cast_mul, Int.cast_ofNat, ←coeff_X_add_one_pow _ n k]
   rw [←eq_intCast (Int.castRingHom (ZMod p)), ←coeff_map, Polynomial.map_pow, Polynomial.map_add,
     Polynomial.map_one, map_X, decompose]
   simp only [add_pow, one_pow, mul_one, ←pow_mul, sum_mul_sum]
@@ -49,5 +44,5 @@ theorem lucas : choose n k ≡ choose (n % p) (k % p) * choose (n / p) (k / p) [
     cases' h with h h <;> simp only [choose_eq_zero_of_lt h, zero_mul, mul_zero, cast_zero]
 
 theorem lucas' {a : ℕ} (ha₁ : n ≤ p ^ a) (ha₂ : k ≤ p ^ a) :
-    choose n k ≡ ∏ i in range a.succ, choose (n / p ^ i % p) (k / p ^ i % p) [ZMOD p] := by
+    (choose n k) % p = ∏ i in range a.succ, choose (n / p ^ i % p) (k / p ^ i % p) % p := by
   sorry
