@@ -1,10 +1,11 @@
-import Mathlib.Data.Nat.Choose.Basic
-import Mathlib.Data.Finset.Basic
+import Mathlib.Data.ZMod.Basic
 
-open Nat
-open Finset
+open Nat Finset
 
 set_option trace.profiler true
+set_option trace.Meta.synthInstance true
 
-example (n k p : ℕ) : (choose n k) % p = (choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k) % p := by
+#check Finset.choose
+example (n k p : ℕ) : n.choose k % p = (n.choose k + n.choose k) % p := by
+  save
   sorry

@@ -5,13 +5,12 @@ import Mathlib.RingTheory.Polynomial.Basic
 open Nat BigOperators Polynomial
 open Finset hiding choose
 
-lemma sum_ite_iff_eq [DecidableEq α] [AddCommMonoid β] [DecidablePred p]
-    {f : α → β} {a : α} {s : Finset α} (h : ∀ x ∈ s, p x ↔ x = a) :
-    (∑ x in s, if p x then f x else 0) = (if a ∈ s then f a else 0) := by
-  rw [sum_congr rfl (g := fun x ↦ if x = a then f x else 0)]
-  · rw [sum_ite_eq']
-  · intro x hx
-    simp only [h x hx]
+lemma sum_ite_iff_eq [DecidableEq α] [AddCommMonoid β]
+    {p : α → Prop} [DecidablePred p]
+    {f : α → β} {a : α} {s : Finset α}
+    (h : ∀ x ∈ s, p x ↔ x = a) :
+    (∑ x in s, if p x then f x else 0) = (if a ∈ s then f a else 0) :=
+  (sum_ite_eq' s a f).symm ▸ sum_congr rfl (fun a ha => if_congr (h a ha) rfl rfl)
 
 variable {n k p : ℕ} [hp : Fact p.Prime]
 
