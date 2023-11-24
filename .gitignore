@@ -2,3 +2,6 @@
 /lake-packages/*
 *.olean
 *.ilean
+/Lean4/work
+/.lake
+.DS_STORE
