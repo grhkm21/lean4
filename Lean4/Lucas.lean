@@ -2,7 +2,8 @@ import Mathlib.Data.Real.Basic
 import Mathlib.Data.ZMod.Basic
 import Mathlib.RingTheory.Polynomial.Basic
 
-open Nat BigOperators Finset Polynomial
+open Nat BigOperators Polynomial
+open Finset hiding choose
 
 lemma sum_ite_iff_eq [DecidableEq α] [AddCommMonoid β] [DecidablePred p]
     {f : α → β} {a : α} {s : Finset α} (h : ∀ x ∈ s, p x ↔ x = a) :

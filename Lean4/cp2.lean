@@ -1,9 +1,10 @@
-import Mathlib.Data.ZMod.Basic
+import Mathlib.Data.Nat.Choose.Basic
+import Mathlib.Data.Finset.Basic
 
 open Nat
-/- open Finset -- makes it slow -/
+open Finset
 
-set_option profiler true
 set_option trace.profiler true
-example (n k p : ℕ) : (choose n k) % p = (choose n k + choose n k) % p := by
+
+example (n k p : ℕ) : (choose n k) % p = (choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k + choose n k) % p := by
   sorry
