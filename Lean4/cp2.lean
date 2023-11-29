@@ -1,11 +1,13 @@
-import Mathlib.Data.ZMod.Basic
+import Mathlib.Tactic
 
-open Nat Finset
+open Nat Set Polynomial FiniteField
 
-set_option trace.profiler true
-set_option trace.Meta.synthInstance true
+-- What is the degree of x^q - x over F_q?
+variable (F : Type*) [Fintype F] [Field F] (q : ℕ) [hq : Fact (IsPrimePow q)]
 
-#check Finset.choose
-example (n k p : ℕ) : n.choose k % p = (n.choose k + n.choose k) % p := by
-  save
-  sorry
+example : degree (X ^ q - X : F[X]) = q := by
+  rw [degree_sub_eq_left_of_degree_lt, degree_X_pow]
+  rw [degree_X_pow, degree_X, one_lt_cast]
+  exact hq.out.one_lt
+
+

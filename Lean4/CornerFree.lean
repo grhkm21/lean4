@@ -24,13 +24,8 @@ theorem MulCornerFree_iff_MulCornerFree' (s : Set (α × α)) :
   MulCornerFree s ↔ MulCornerFree' s :=
 by
   dsimp [MulCornerFree, MulCornerFree']
-  constructor
-  · intro h x y x' y' d h₁ h₂ h₃ hx hy
-    rw [hx] at h₂
-    rw [hy] at h₃
-    exact h x y d h₁ h₂ h₃
-  · intro h x y d h₁ h₂ h₃
-    exact h x y (x * d) (y * d) d h₁ h₂ h₃ rfl rfl
+  exact ⟨fun h x y x' y' d h₁ h₂ h₃ hx hy ↦ h x y d h₁ (hx ▸ h₂) (hy ▸ h₃),
+    fun h x y d h₁ h₂ h₃ ↦ h x y (x * d) (y * d) d h₁ h₂ h₃ rfl rfl⟩
 
 @[to_additive]
 instance (s : Finset (α × α)) [DecidableEq α] :

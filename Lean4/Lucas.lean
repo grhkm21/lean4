@@ -44,5 +44,6 @@ theorem lucas : choose n k ≡ choose (n % p) (k % p) * choose (n / p) (k / p) [
     cases' h with h h <;> simp only [choose_eq_zero_of_lt h, zero_mul, mul_zero, cast_zero]
 
 theorem lucas' {a : ℕ} (ha₁ : n ≤ p ^ a) (ha₂ : k ≤ p ^ a) :
-    (choose n k) % p = ∏ i in range a.succ, choose (n / p ^ i % p) (k / p ^ i % p) % p := by
-  sorry
+    (choose n k) ≡ ∏ i in range a.succ, choose (n / p ^ i % p) (k / p ^ i % p) [ZMOD p] := by
+  induction' n using Nat.strong_induction_on
+  induction' n using Nat.strong_induction_on
