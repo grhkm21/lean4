@@ -9,7 +9,6 @@ theorem Finset.sum_union_inter' {s t : Finset α} {f : α → β} [Ring β] [Dec
     (∑ x in s ∪ t, f x) = (∑ x in s, f x) + (∑ x in t, f x) - (∑ x in s ∩ t, f x) := by
   rw [←sum_union_inter, add_sub_cancel]
 
-#check sum_finset_product
 example (s : Finset ℕ) :
     ∑ d in s.filter (fun d ↦ d < x), f d =
       ∑ a in range x, ∑ d in filter (fun d ↦ d = a) s, f d := by
@@ -52,12 +51,12 @@ lemma mul_lt_mul_of_lt_lt {a b c d : ℕ} (h : a < b) (h' : c < d) : a * c < b *
     exact Nat.mul_pos (zero_lt_of_lt h) h'
   · exact Nat.mul_lt_mul h (le_of_lt h') (Nat.pos_of_ne_zero hc)
 
-lemma aux2 {x U V : ℕ} (h : U * V = x) (h' : a * b ≤ x) : a ≤ U ∨ b ≤ V := by
+lemma aux2 {x U V : ℕ} (h : x = U * V) (h' : a * b ≤ x) : a ≤ U ∨ b ≤ V := by
   by_contra'
-  rw [←h] at h'
+  subst h
   exact (lt_self_iff_false _).mp $ lt_of_le_of_lt h' $ mul_lt_mul_of_lt_lt this.left this.right
 
-lemma aux3 {x U V : ℕ} (h : U * V = x) :
+lemma aux3 {x U V : ℕ} (h : x = U * V) :
     (Ico 1 (x + 1) ×ˢ Ico 1 (x + 1)).filter (fun d ↦ d.fst * d.snd ≤ x)
       = (Ico 1 (x + 1) ×ˢ Ico 1 (x + 1)).filter (fun d ↦ d.fst * d.snd ≤ x ∧ d.fst ≤ U)
       ∪ (Ico 1 (x + 1) ×ˢ Ico 1 (x + 1)).filter (fun d ↦ d.fst * d.snd ≤ x ∧ d.snd ≤ V) := by
@@ -65,11 +64,18 @@ lemma aux3 {x U V : ℕ} (h : U * V = x) :
   simp only [mem_filter, mem_union]
   constructor <;> intro h'
   · simp only [h', true_and, aux2 h h'.right]
-  · cases' h' with h' h' <;> tauto
+  · cases' h' <;> tauto
 
-example (a : ℕ) (h : 0 < a) :
-    (∑ b in Ico 1 (x + 1), if a * b ≤ x then g b else 0)
-      = ∑ b in Ico 1 (x / a + 1), g b := by
+lemma aux3' {U V : ℕ} :
+    (Ico 1 (U * V + 1) ×ˢ Ico 1 (U * V + 1)).filter (fun d ↦ d.fst * d.snd ≤ U * V)
+      = (Ico 1 (U * V + 1) ×ˢ Ico 1 (U * V + 1)).filter (fun d ↦ d.fst * d.snd ≤ U * V ∧ d.fst ≤ U)
+      ∪ (Ico 1 (U * V + 1) ×ˢ Ico 1 (U * V + 1)).filter
+        (fun d ↦ d.fst * d.snd ≤ U * V ∧ d.snd ≤ V) := by
+    set x := U * V with hx
+    exact aux3 hx
+
+lemma aux4 {a : ℕ} (f : ℕ → β) [Ring β] (h : 0 < a) :
+    (∑ b in Ico 1 (x + 1), if a * b ≤ x then f b else 0) = ∑ b in Ico 1 (x / a + 1), f b := by
   rw [←sum_filter]
   refine sum_congr ?_ (fun _ _ ↦ rfl)
   ext b
@@ -82,30 +88,51 @@ example (a : ℕ) (h : 0 < a) :
     have : a * b ≤ x := le_trans (Nat.mul_le_mul_left a h'.right) (mul_div_le x a)
     tauto
 
-example {x U V : ℕ} (h : U * V = x) :
+theorem hyperbola {U V : ℕ} (hx : x = U * V) :
     ∑ n in range (x + 1), (f * g) n
       = ∑ a in Ico 1 (U + 1), ∑ b in Ico 1 (x / a + 1), f a * g b
       + ∑ b in Ico 1 (V + 1), ∑ a in Ico 1 (x / b + 1), f a * g b
       - ∑ a in Ico 1 (U + 1), ∑ b in Ico 1 (V + 1), f a * g b := by
+  subst hx
+  by_cases hU : U = 0
+  · subst hU ; simp
+  by_cases hV : V = 0
+  · subst hV ; simp
+  have hU' := @Nat.le_mul_of_pos_right U _ $ Nat.pos_of_ne_zero hV
+  have hV' := @Nat.le_mul_of_pos_left V _ $ Nat.pos_of_ne_zero hU
   simp_rw [aux1, lt_succ_iff]
-  rw [aux3 h, sum_union_inter']
+  rw [aux3', sum_union_inter']
   congr 1 ; congr 1
-  · have : (Ico 1 (x + 1) ×ˢ Ico 1 (x + 1)).filter (fun d ↦ d.1 * d.2 ≤ x ∧ d.1 ≤ U)
-        = (Ico 1 (U + 1) ×ˢ Ico 1 (x + 1)).filter (fun d ↦ d.1 * d.2 ≤ x) := by
+  · have : (Ico 1 (U * V + 1) ×ˢ Ico 1 (U * V + 1)).filter (fun d ↦ d.1 * d.2 ≤ U * V ∧ d.1 ≤ U)
+        = (Ico 1 (U + 1) ×ˢ Ico 1 (U * V + 1)).filter (fun d ↦ d.1 * d.2 ≤ U * V) := by
       ext d
-      simp only [mem_filter, mem_product, mem_Ico, lt_succ_iff, ←h]
+      simp only [mem_filter, mem_product, mem_Ico, lt_succ_iff]
       constructor <;> intro h'
       · tauto
-      · have : 0 < V := by
-          by_contra'
-          rw [le_zero.mp this] at h'
-          exact not_succ_le_zero 0 $ le_trans (by tauto) (by tauto)
-        have : d.1 ≤ U * V := le_trans (by tauto) (le_mul_of_pos_right this)
-        tauto
+      · have : d.1 ≤ U * V := le_trans ?_ hU'
+        all_goals tauto
     rw [this, sum_filter, sum_product]
     refine sum_congr rfl (fun a ha ↦ ?_)
-    dsimp only
-  · done
-  · done
-
-#check product_eq_biUnion
+    exact aux4 _ (mem_Ico.mp ha).left
+  · have : (Ico 1 (U * V + 1) ×ˢ Ico 1 (U * V + 1)).filter (fun d ↦ d.1 * d.2 ≤ U * V ∧ d.2 ≤ V)
+        = (Ico 1 (U * V + 1) ×ˢ Ico 1 (V + 1)).filter (fun d ↦ d.1 * d.2 ≤ U * V) := by
+      ext d
+      simp only [mem_filter, mem_product, mem_Ico, lt_succ_iff]
+      constructor <;> intro h'
+      · tauto
+      · have : d.2 ≤ U * V := le_trans ?_ hV'
+        all_goals tauto
+    rw [this, sum_filter, sum_product_right]
+    refine sum_congr rfl (fun a ha ↦ ?_)
+    simp only [mul_comm, aux4 _ (mem_Ico.mp ha).left]
+  · save
+    rw [←filter_and, ←sum_product']
+    congr
+    ext a
+    simp only [mem_product, mem_Ico, mem_filter, lt_succ]
+    constructor <;> intro h
+    · tauto
+    · have : a.1 ≤ U * V := le_trans ?_ hU'
+      have : a.2 ≤ U * V := le_trans ?_ hV'
+      have : a.1 * a.2 ≤ U * V := Nat.mul_le_mul ?_ ?_
+      all_goals tauto
