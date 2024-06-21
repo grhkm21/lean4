@@ -9,6 +9,7 @@ import Lean4.setm.Setm
 
 open Nat Set Real BigOperators MeasureTheory Filter
 
+variable {α β : Type*}
 variable {M : Type*} [AddCommMonoid M] (a : ℕ → M)
 
 /-- sum of a n for k ≤ n ≤ x -/
@@ -33,7 +34,7 @@ lemma summatory_succ (k n : ℕ) (hk : k ≤ n + 1) :
   rw [summatory_nat, ←cast_add_one, summatory_nat, ←Ico_succ_right, @add_comm M,
   Finset.sum_Ico_succ_top hk, Ico_succ_right]
 
-lemma summatory_one {𝕜 : Type*} [IsROrC 𝕜] (k : ℕ) (n : ℝ) (h : k ≤ n) :
+lemma summatory_one {𝕜 : Type*} [RCLike 𝕜] (k : ℕ) (n : ℝ) (h : k ≤ n) :
     summatory (fun _ ↦ (1 : 𝕜)) k n = ⌊n⌋₊ - k + 1 := by
   rw [summatory, Finset.sum_const, nsmul_eq_mul, mul_one, card_Icc, cast_sub, cast_add, cast_one,
       add_sub_right_comm]
@@ -55,7 +56,7 @@ lemma abs_summatory_bound {M : Type*} [h : SeminormedAddCommGroup M] (a : ℕ �
     (Finset.sum_le_sum_of_subset_of_nonneg
       (Finset.Icc_subset_Icc le_rfl (floor_le_of_le hx)) (by simp))
 
-lemma partial_summation_integrable_Ioc {𝕜 : Type*} [IsROrC 𝕜] (a : ℕ → 𝕜) {f : ℝ → 𝕜} {x y : ℝ}
+lemma partial_summation_integrable_Ioc {𝕜 : Type*} [RCLike 𝕜] (a : ℕ → 𝕜) {f : ℝ → 𝕜} {x y : ℝ}
     {k : ℕ} (hf' : IntegrableOn f (Ioc x y)) :
     IntegrableOn (summatory a k * f) (Ioc x y) := by
   let b := ∑ i in Finset.Icc k ⌈y⌉₊, norm (a i)
@@ -69,7 +70,7 @@ lemma partial_summation_integrable_Ioc {𝕜 : Type*} [IsROrC 𝕜] (a : ℕ →
     · exact hz.2.trans (le_ceil y)
     · apply le_norm_self
 
-lemma partial_summation_integrable_Ico {𝕜 : Type*} [IsROrC 𝕜] (a : ℕ → 𝕜) {f : ℝ → 𝕜} {x y : ℝ}
+lemma partial_summation_integrable_Ico {𝕜 : Type*} [RCLike 𝕜] (a : ℕ → 𝕜) {f : ℝ → 𝕜} {x y : ℝ}
     {k : ℕ} (hf' : IntegrableOn f (Ico x y)) :
     IntegrableOn (summatory a k * f) (Ico x y) := by
   let b := ∑ i in Finset.Icc k ⌈y⌉₊, norm (a i)
@@ -83,15 +84,15 @@ lemma partial_summation_integrable_Ico {𝕜 : Type*} [IsROrC 𝕜] (a : ℕ →
     · exact le_trans hz.2.le (le_ceil y)
     · apply le_norm_self
 
-lemma summatory_floor_self {𝕜 : Type*} [IsROrC 𝕜] (a : ℕ → 𝕜) (k : ℕ) : summatory a k k = a k := by
+lemma summatory_floor_self {𝕜 : Type*} [RCLike 𝕜] (a : ℕ → 𝕜) (k : ℕ) : summatory a k k = a k := by
   rw [summatory, floor_coe, Finset.Icc_self, Finset.sum_singleton]
 
 /- Add to Mathlib -/
-lemma eqOn_mul_right [Mul β] {f g : α → β} (h : α → β) (h' : EqOn f g S) : EqOn (f * h) (g * h) S :=
+lemma eqOn_mul_right [Mul β] {S : Set α} {f g : α → β} (h : α → β) (h' : EqOn f g S) : EqOn (f * h) (g * h) S :=
   fun _ hx ↦ by simp only [Pi.mul_apply, h' hx]
 
 theorem sum_integral_Ioc
-    {𝕜 : Type*} [IsROrC 𝕜]
+    {𝕜 : Type*} [RCLike 𝕜]
     {k N : ℕ} (hN : k ≤ N)
     (f : ℝ → 𝕜) (hf : IntegrableOn f (Ioc k N)) :
     ∑ x in Finset.Ico k N, ∫ t in Ioc (x : ℝ) (x + 1), f t = ∫ t in Ioc (k : ℝ) N, f t := by
@@ -114,7 +115,7 @@ theorem sum_integral_Ioc
     · exact_mod_cast h₄
 
 theorem sum_integral_Ico
-    {𝕜 : Type*} [IsROrC 𝕜]
+    {𝕜 : Type*} [RCLike 𝕜]
     {k N : ℕ} (hN : k ≤ N)
     (f : ℝ → 𝕜) (hf : IntegrableOn f (Ico k N)) :
     ∑ x in Finset.Ico k N, ∫ t in Ico (x : ℝ) (x + 1), f t = ∫ t in Ico (k : ℝ) N, f t := by
@@ -136,7 +137,7 @@ theorem sum_integral_Ico
     · exact h₃
     · exact_mod_cast h₄
 
-theorem partial_summation_nat_Ioc {𝕜 : Type*} [IsROrC 𝕜] (a : ℕ → 𝕜) (f f' : ℝ → 𝕜)
+theorem partial_summation_nat_Ioc {𝕜 : Type*} [RCLike 𝕜] (a : ℕ → 𝕜) (f f' : ℝ → 𝕜)
     {k : ℕ} {N : ℕ} (hN : k ≤ N)
     (hf : ∀ i ∈ Icc (k : ℝ) N, HasDerivAt f (f' i) i)
     (hf' : IntegrableOn f' (Ioc k N)) :
@@ -182,7 +183,7 @@ theorem partial_summation_nat_Ioc {𝕜 : Type*} [IsROrC 𝕜] (a : ℕ → 𝕜
       · exact (intervalIntegrable_iff_integrable_Ioc_of_le hN₂).mpr hf'.right
 
 /- Alternate proof -/
-@[deprecated] theorem partial_summation_nat_Ioc' {𝕜 : Type*} [IsROrC 𝕜] (a : ℕ → 𝕜) (f f' : ℝ → 𝕜)
+@[deprecated] theorem partial_summation_nat_Ioc' {𝕜 : Type*} [RCLike 𝕜] (a : ℕ → 𝕜) (f f' : ℝ → 𝕜)
     {k : ℕ} {N : ℕ} (hN : k ≤ N)
     (hf : ∀ i ∈ Icc (k : ℝ) N, HasDerivAt f (f' i) i)
     (hf' : IntegrableOn f' (Ioc k N)) :
@@ -255,7 +256,7 @@ theorem partial_summation_nat_Ioc {𝕜 : Type*} [IsROrC 𝕜] (a : ℕ → 𝕜
   done
 
 /- I think there might be some symmetry proof, but it probably requires change of variables -/
-theorem partial_summation_nat_Ico {𝕜 : Type*} [IsROrC 𝕜] (a : ℕ → 𝕜) (f f' : ℝ → 𝕜)
+theorem partial_summation_nat_Ico {𝕜 : Type*} [RCLike 𝕜] (a : ℕ → 𝕜) (f f' : ℝ → 𝕜)
     {k : ℕ} {N : ℕ} (hN : k ≤ N)
     (hf : ∀ i ∈ Icc (k : ℝ) N, HasDerivAt f (f' i) i)
     (hf' : IntegrableOn f' (Ico k N)) :
@@ -299,7 +300,7 @@ theorem partial_summation_nat_Ico {𝕜 : Type*} [IsROrC 𝕜] (a : ℕ → 𝕜
       · apply (intervalIntegrable_iff_integrable_Icc_of_le hN₂).mpr
         exact integrableOn_Icc_iff_integrableOn_Ico.mpr hf'.right
 
-theorem partial_summation_real_Ioc {𝕜 : Type*} [IsROrC 𝕜] (a : ℕ → 𝕜) (f f' : ℝ → 𝕜)
+theorem partial_summation_real_Ioc {𝕜 : Type*} [RCLike 𝕜] (a : ℕ → 𝕜) (f f' : ℝ → 𝕜)
     {k : ℕ} {N : ℝ} (hN : k ≤ N)
     (hf : ∀ i ∈ Icc (k : ℝ) N, HasDerivAt f (f' i) i)
     (hf' : IntegrableOn f' (Ioc k N)) :
@@ -307,7 +308,7 @@ theorem partial_summation_real_Ioc {𝕜 : Type*} [IsROrC 𝕜] (a : ℕ → �
       summatory a k N * f N - ∫ t in Ioc (k : ℝ) N, summatory a k t * f' t := by
   sorry
 
-theorem partial_summation_real_Ico {𝕜 : Type*} [IsROrC 𝕜] (a : ℕ → 𝕜) (f f' : ℝ → 𝕜)
+theorem partial_summation_real_Ico {𝕜 : Type*} [RCLike 𝕜] (a : ℕ → 𝕜) (f f' : ℝ → 𝕜)
     {k : ℕ} {N : ℝ} (hN : k ≤ N)
     (hf : ∀ i ∈ Icc (k : ℝ) N, HasDerivAt f (f' i) i)
     (hf' : IntegrableOn f' (Ico k N)) :
@@ -315,7 +316,7 @@ theorem partial_summation_real_Ico {𝕜 : Type*} [IsROrC 𝕜] (a : ℕ → �
       summatory a k N * f N - ∫ t in Ico (k : ℝ) N, summatory a k t * f' t := by
   sorry
 
-theorem partial_summation_coef_one_Ioc {𝕜 : Type*} [IsROrC 𝕜] (f f' : ℝ → 𝕜)
+theorem partial_summation_coef_one_Ioc {𝕜 : Type*} [RCLike 𝕜] (f f' : ℝ → 𝕜)
     {k : ℕ} {N : ℝ} (hN : k ≤ N)
     (hf : ∀ i ∈ Icc (k : ℝ) N, HasDerivAt f (f' i) i)
     (hf' : IntegrableOn f' (Ioc k N)) :
@@ -331,7 +332,7 @@ theorem partial_summation_coef_one_Ioc {𝕜 : Type*} [IsROrC 𝕜] (f f' : ℝ 
     beta_reduce
     rw [summatory_one _ _ $ le_of_lt ht.left]
 
-theorem partial_summation_coef_one_Ico {𝕜 : Type*} [IsROrC 𝕜] (f f' : ℝ → 𝕜)
+theorem partial_summation_coef_one_Ico {𝕜 : Type*} [RCLike 𝕜] (f f' : ℝ → 𝕜)
     {k : ℕ} {N : ℝ} (hN : k ≤ N)
     (hf : ∀ i ∈ Icc (k : ℝ) N, HasDerivAt f (f' i) i)
     (hf' : IntegrableOn f' (Ico k N)) :
