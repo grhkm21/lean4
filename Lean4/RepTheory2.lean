@@ -70,18 +70,17 @@ end instances
 
 section CategoryTheory
 
-@[simp]
 theorem Mono.iff {C : Type*} [Category C] {X Y : C} (f : X ⟶ Y) :
     Mono f ↔ ∀ {Z : C} (g h : Z ⟶ X), g ≫ f = h ≫ f → g = h :=
   ⟨fun ⟨h⟩ ↦ h, fun h ↦ ⟨h⟩⟩
 
 theorem Mono.comp_iso_hom {C : Type*} [Category C] {X Y Z : C} (f : X ⟶ Y) (g : Y ≅ Z) :
     Mono (f ≫ g.hom) ↔ Mono f := by
-  simp
+  simp [Mono.iff]
 
 theorem Mono.comp_iso_inv {C : Type*} [Category C] {X Y Z : C} (f : X ⟶ Y) (g : Z ≅ Y) :
     Mono (f ≫ g.inv) ↔ Mono f := by
-  simp
+  simp [Mono.iff]
 
 end CategoryTheory
 
@@ -135,7 +134,7 @@ theorem Rep.isSimpleModule_of_Simple [hV : Simple V] : IsSimpleModule k⟦G⟧ V
   · left
     simp only [hW, ne_eq, false_iff, not_not] at hV'
     simp_rw [ofSubmoduleHom, Preadditive.IsIso.comp_right_eq_zero] at hV' hW_mono
-    simp [hV'] at hW_mono
+    simp [Mono.iff, hV'] at hW_mono
     ext w
     constructor <;> intro hw
     · apply (AddSubmonoid.mk_eq_zero _).mp
@@ -147,33 +146,101 @@ theorem Rep.simple_of_isSimpleModule [hV : IsSimpleModule k⟦G⟧ V.ρ.asModule
   constructor
   intro W f f_mono
   constructor
-  · rintro hf rfl
-    exact ((Submodule.nontrivial_iff _).mp (orderIsoMapComap <| linearEquivIsoModuleIso.inv <|
-      equivalenceModuleMonoidAlgebra.functor.mapIso (isIsoZeroEquivIsoZero _ _ hf).snd
-      ).toEquiv.symm.nontrivial).exists_pair_ne.2.2 <| (Rep.isZero_iff.mp (isZero_zero _)).allEq _ _
+  · /- If f : W ⟶ V is iso, then f ≠ 0 -/
+    /- If the zero map is an isomorphism, then V ≅ 0, but that contradicts that V is nontrivial -/
+    rintro hf rfl
+    obtain ⟨_, _, hW'⟩ := (Submodule.nontrivial_iff _).mp (orderIsoMapComap <|
+      linearEquivIsoModuleIso.inv <| equivalenceModuleMonoidAlgebra.functor.mapIso
+        (isIsoZeroEquivIsoZero _ _ hf).snd).toEquiv.symm.nontrivial
+    exact hW' <| (Rep.isZero_iff.mp (isZero_zero _)).allEq _ _
   · intro hf
-    sorry
-#check Exists
+    let map : W.ρ.asModule →ₗ[k⟦G⟧] V.ρ.asModule := equivalenceModuleMonoidAlgebra.functor.map f
+    let im := Submodule.map map ⊤
+    replace hV_top_bot := (hV_top_bot im).resolve_left ?_
+    /- Given that im = ⊤, prove f is iso -/
+    /- I go for the lazy route of unwrapping definitionds and proving the result in module land -/
+    · have : IsIso (equivalenceModuleMonoidAlgebra.functor.map f) := by
+        refine (ConcreteCategory.isIso_iff_bijective _).mpr ⟨?_, ?_⟩
+        · apply (ModuleCat.mono_iff_injective _).mp
+          exact equivalenceModuleMonoidAlgebra.functor.map_mono f
+        · apply (Set.range_iff_surjective (f := map)).mp
+          rw [← LinearMap.range_coe, ← Submodule.map_top]
+          exact congrArg (fun f ↦ f.carrier) hV_top_bot
+      exact (NatIso.isIso_map_iff equivalenceModuleMonoidAlgebra.unitIso.symm f).mp
+        <| equivalenceModuleMonoidAlgebra.inverse.map_isIso _
+    /- Prove that im ≠ ⊥ -/
+    · contrapose! hf
+      have (w) : f.hom w = 0 := by
+        apply Set.mem_singleton_iff.mp
+        change map w ∈ (⊥ : Submodule k⟦G⟧ _)
+        exact hf ▸ Set.mem_image_of_mem _ (mem_top (R := k⟦G⟧) (M := W.ρ.asModule))
+      ext w
+      convert this w
 
-noncomputable example {k G : Type u} [Field k] [Group G]
-    (V W : Rep k G) (h : V ≅ W) (M : Submodule k⟦G⟧ V.ρ.asModule) : Submodule k⟦G⟧ W.ρ.asModule :=
-  orderIsoMapComap (linearEquivIsoModuleIso.inv
-    <| Rep.equivalenceModuleMonoidAlgebra.functor.mapIso h) M
+theorem Rep.simple_iff : Simple V ↔ IsSimpleModule k⟦G⟧ V.ρ.asModule :=
+  ⟨fun _ ↦ isSimpleModule_of_Simple, fun _ ↦ simple_of_isSimpleModule⟩
 
-#check Representation
-#check LinearEquiv.toModuleIso
-#check Iso.toLinearEquiv
-#check Equivalence.changeFunctor
+--------------------------------------------------------------------------------------------
 
-example {R V W : Type u} [Ring R] [AddCommGroup V] [AddCommGroup W] [Module R V] [Module R W]
-    (M : Submodule R V) (h : ModuleCat.of R V ≅ ModuleCat.of R W) : Submodule R W :=
-  orderIsoMapComap (linearEquivIsoModuleIso.inv h) M
+section help_me_consequence
 
-noncomputable example {V W : Rep k G} (M : Submodule k⟦G⟧ V.ρ.asModule) (h : V ≅ W) :
-    Submodule k⟦G⟧ W.ρ.asModule :=
-  orderIsoMapComap (linearEquivIsoModuleIso.inv
-    <| Rep.equivalenceModuleMonoidAlgebra.functor.mapIso h) M
+/- Massive TODO: Define FdRep.ρ.asModule, or at least alias it -/
 
-example {C D : Type u} [Category C] [Category D]
-    {X Y : C} {F : C ⥤ D} (h : X ≅ Y) : F.obj X ≅ F.obj Y := by
-  exact F.mapIso h
+abbrev FdRep.asModule (V : FdRep k G) := V.toRep.ρ.asModule
+
+theorem FdRep.simple_iff_simple_toRep {V : FdRep k G} : Simple V ↔ Simple V.toRep := by
+  sorry
+
+theorem FdRep.simple_iff {V : FdRep k G} : Simple V ↔ IsSimpleModule k⟦G⟧ V.asModule :=
+  simple_iff_simple_toRep.trans Rep.simple_iff
+
+theorem FdRep.thing {V : FdRep k G} (hV : IsSimpleModule k⟦G⟧ V.asModule) :
+    IsSimpleModule k⟦G⟧ V.toRep.ρ.asModule := by
+  sorry
+
+-- One dimensional representations are simple i.e. irreducible
+-- Of course hf can also be dim(V / k[G])
+theorem FdRep.rank_one_is_simple_yay
+    (V : FdRep k G) (hf : finrank k⟦G⟧ V.toRep.ρ.asModule = 1) : Simple V :=
+  FdRep.simple_iff.mpr <| FdRep.thing <| isSimpleModule_iff_finrank_eq_one.mpr hf
+
+end help_me_consequence
+
+--------------------------------------------------------------------------------------------
+
+/- Tada! You have made it here. Here are some results you can enjoy! -/
+
+section tada
+
+-- k cannot be in any universe
+variable {n : ℕ} (hn : 1 < n) {k : Type} [Field k] {ζ : k} (hζ : ζ ∈ primitiveRoots n k)
+
+-- this proof should work with just `NeZero n`
+lemma zeta_pow_mod_eq {k : ℕ} : ζ ^ (k % n) = ζ ^ k := by
+  nth_rw 2 [← Nat.mod_add_div k n]
+  rw [mem_primitiveRoots (zero_lt_one.trans hn)] at hζ
+  rw [pow_add, pow_mul, hζ.pow_eq_one, one_pow, mul_one]
+
+/-- Like `zpowersHom` but for `ZMod` and primitive roots. -/
+@[simps]
+def zmodpowersHom {ζ : k} (hζ : ζ ∈ primitiveRoots n k) : Multiplicative (ZMod n) →* k where
+  toFun := fun mk => (ζ ^ mk.toAdd.val)
+  map_one' := by simp
+  map_mul' := fun x y => by
+    simp
+    rw [← pow_add, ← zeta_pow_mod_eq hn hζ, @ZMod.val_add _ ⟨by omega⟩, zeta_pow_mod_eq hn hζ]
+    exact zeta_pow_mod_eq hn hζ
+
+def Representation.cyc_rep : Representation k (Multiplicative (ZMod n)) k :=
+  (Algebra.lsmul k k k).toMonoidHom.comp (zmodpowersHom hn hζ)
+
+noncomputable def cyc_rep : FdRep k (Multiplicative (ZMod n)) :=
+  FdRep.of (Representation.cyc_rep hn hζ)
+
+theorem cyc_rep_irreducible : Simple (_root_.cyc_rep hn hζ) :=
+  FdRep.rank_one_is_simple_yay _ <| finrank_self k
+
+end tada
+@grhkm21
+Comment
+
