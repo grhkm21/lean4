@@ -1,10 +1,13 @@
-import Mathlib.Algebra.Category.GroupCat.Zero
+import Mathlib.Algebra.Category.FGModuleCat.Basic
+import Mathlib.Algebra.Category.Grp.Colimits
+import Mathlib.Algebra.Category.Grp.Zero
 import Mathlib.Algebra.Category.ModuleCat.Basic
 import Mathlib.Algebra.Category.ModuleCat.Kernels
 import Mathlib.CategoryTheory.Abelian.Exact
 import Mathlib.CategoryTheory.Limits.Shapes.ZeroMorphisms
 import Mathlib.CategoryTheory.Limits.Shapes.ZeroObjects
 import Mathlib.CategoryTheory.Simple
+import Mathlib.LinearAlgebra.Quotient
 import Mathlib.Order.BoundedOrder
 import Mathlib.RepresentationTheory.Action.Limits
 import Mathlib.RepresentationTheory.Character
@@ -12,8 +15,7 @@ import Mathlib.RingTheory.RootsOfUnity.Basic
 import Mathlib.RingTheory.SimpleModule
 
 open scoped ZeroObject
-open Module Submodule Representation FiniteDimensional Function Pointwise CategoryTheory
-  MonoidAlgebra Limits
+open Module Submodule Representation FiniteDimensional Pointwise CategoryTheory MonoidAlgebra Limits
 
 universe u
 variable {k G : Type u} [Field k] [Group G]
@@ -89,6 +91,8 @@ end CategoryTheory
 section Results
 
 variable {V : Rep k G}
+
+open Function
 
 local notation:arg k:75"⟦"G:75"⟧" => MonoidAlgebra k G
 
@@ -180,16 +184,268 @@ theorem Rep.simple_of_isSimpleModule [hV : IsSimpleModule k⟦G⟧ V.ρ.asModule
 theorem Rep.simple_iff : Simple V ↔ IsSimpleModule k⟦G⟧ V.ρ.asModule :=
   ⟨fun _ ↦ isSimpleModule_of_Simple, fun _ ↦ simple_of_isSimpleModule⟩
 
+end Results
+
+--------------------------------------------------------------------------------------------
+
+section FdTodo1
+
+open FGModuleCat
+
+variable {V W : FdRep k G}
+
+/-
+## TODO
+[X] `FdRep k G ≌ FullSubcategory (FiniteDimensional k)`
+[X] Upgrade the right rigid structure to a rigid structure (this just needs to be done for `FGModuleCat`).
+[ ] `FdRep k G` has all finite colimits.
+  Note: Probably want to show that (FGModuleCat k) has finite colimits (and abelian below).
+  See "RepresentationTheory/Action/Limits.lean" about this
+[ ] `FdRep k G` is abelian.
+[ ] `FdRep k G ≌ FGModuleCat (MonoidAlgebra k G)`.
+-/
+
+/- Can we agree on how to phrase theorems/lemmas? Use V? V.toRep? V.ρ.asModule? -/
+instance FdRep.toRep_finiteDimensional : FiniteDimensional k V.toRep :=
+  FGModuleCat.instFiniteCarrier k _
+
+instance FdRep.toRep_finiteDimensional' : FiniteDimensional k ((forget₂ _ (Rep k G)).obj V) :=
+  FGModuleCat.instFiniteCarrier k _
+
+noncomputable def FdRep.lift_hom (f : V ⟶ W) : V.toRep ⟶ W.toRep :=
+  (forget₂ _ _).map f
+
+/- Bundles Rep with a FiniteDimensional into a FdRep -/
+noncomputable def FdRep.ofRep (V : Rep k G) [hV : FiniteDimensional k V] : FdRep k G :=
+  ⟨⟨V.V, hV⟩, V.ρ⟩
+
+noncomputable def FdRep.toFiniteDimensionalSubcategory :
+    FdRep k G ⥤ FullSubcategory (fun V : Rep k G ↦ FiniteDimensional k V) :=
+  FullSubcategory.lift _ (forget₂ _ _) inferInstance
+
+noncomputable def FdRep.ofFiniteDimensionalSubcategory :
+    FullSubcategory (fun V : Rep k G ↦ FiniteDimensional k V) ⥤ FdRep k G where
+  obj := fun ⟨V, _⟩ ↦ FdRep.ofRep V
+  map := fun f ↦ ⟨f.hom, f.comm⟩
+
+noncomputable def FdRep.equivalenceFiniteDimensionalSubcategory :
+    FdRep k G ≌ FullSubcategory (fun V : Rep k G ↦ FiniteDimensional k V) where
+  functor := toFiniteDimensionalSubcategory
+  inverse := ofFiniteDimensionalSubcategory
+  unitIso := by aesop_cat
+  counitIso := by aesop_cat
+
+end FdTodo1
+
+--------------------------------------------------------------------------------------------
+
+section BraidedResults
+
+variable {C : Type u} [Category C] [MonoidalCategory C] [BraidedCategory C] {X Y : C}
+
+namespace BraidedCategory
+
+open Category BraidedCategory MonoidalCategory
+
+/- yang baxter but with β_.inv instead of β_.hom.
+Maybe there is a proof via duality, but proving it directly is just copy and pasting -/
+theorem yang_baxter_inv (X Y Z : C) :
+    (α_ X Y Z).inv ≫ (β_ Y X).inv ▷ Z ≫ (α_ Y X Z).hom
+      ≫ Y ◁ (β_ Z X).inv ≫ (α_ Y Z X).inv ≫ (β_ Z Y).inv ▷ X ≫ (α_ Z Y X).hom
+        = X ◁ (β_ Z Y).inv ≫ (α_ X Z Y).inv
+          ≫ (β_ Z X).inv ▷ Y ≫ (α_ Z X Y).hom ≫ Z ◁ (β_ Y X).inv := by
+  rw [← braiding_inv_tensor_left_assoc, ← cancel_mono (α_ Z Y X).inv]
+  repeat rw [assoc]
+  rw [Iso.hom_inv_id, comp_id, ← braiding_inv_naturality_right, braiding_inv_tensor_left]
+
+theorem yang_baxter_inv' (X Y Z : C) :
+    (β_ Y X).inv ▷ Z ⊗≫ Y ◁ (β_ Z X).inv ⊗≫ (β_ Z Y).inv ▷ X =
+      𝟙 _ ⊗≫ (X ◁ (β_ Z Y).inv ⊗≫ (β_ Z X).inv ▷ Y ⊗≫ Z ◁ (β_ Y X).inv) ⊗≫ 𝟙 _ := by
+  rw [← cancel_epi (α_ X Y Z).inv, ← cancel_mono (α_ Z Y X).hom]
+  convert yang_baxter_inv X Y Z using 1
+  all_goals coherence
+
+end BraidedCategory
+
+end BraidedResults
+
+--------------------------------------------------------------------------------------------
+
+section FdTodo2
+
+variable {C : Type u} [Category C] [MonoidalCategory C] [BraidedCategory C] {X Y : C}
+
+/-
+[X] Upgrade the right rigid structure to a rigid structure (this just needs to be done for `FGModuleCat`).
+-/
+
+open Category BraidedCategory MonoidalCategory
+
+namespace BraidedCategory
+
+/- coevaluation_evaluation' field of ExactPairing Y X in a braided category -/
+theorem coevaluation_evaluation_braided' [inst : ExactPairing X Y] :
+    X ◁ (η_ X Y ≫ (β_ Y X).inv) ≫ (α_ X Y X).inv ≫ ((β_ X Y).hom ≫ ε_ X Y) ▷ X
+      = (ρ_ X).hom ≫ (λ_ X).inv := by
+  /- Rearrange into _ = 𝟙 _ -/
+  rw [Iso.eq_comp_inv, ← Iso.inv_comp_eq_id]
+  /- Whitney trick transcribed: https://mathoverflow.net/a/162729/493261 -/
+  calc
+    _ = 𝟙 X ⊗≫ X ◁ η_ X Y ⊗≫ (X ◁ (β_ Y X).inv ⊗≫ (β_ X Y).hom ▷ X) ⊗≫ ε_ X Y ▷ X ⊗≫ 𝟙 X := by
+      coherence
+    _ = 𝟙 X ⊗≫ X ◁ η_ X Y ⊗≫ (𝟙 (X ⊗ X ⊗ Y) ⊗≫ (β_ X X).hom ▷ Y ⊗≫ X ◁ (β_ X Y).hom
+        ⊗≫ (β_ Y X).inv ▷ X ⊗≫ Y ◁ (β_ X X).inv ⊗≫ 𝟙 ((Y ⊗ X) ⊗ X)) ⊗≫ ε_ X Y ▷ X ⊗≫ 𝟙 X := by
+      congr 3
+      simp [monoidalComp]
+      rw [← IsIso.eq_inv_comp]
+      repeat rw [← assoc]
+      iterate 5 rw [← IsIso.comp_inv_eq]
+      simpa using yang_baxter _ _ _
+    _ = 𝟙 X ⊗≫ (X ◁ η_ X Y ≫ (β_ X (X ⊗ Y)).hom) ⊗≫ ((β_ (Y ⊗ X) X).inv ≫ ε_ X Y ▷ X) ⊗≫ 𝟙 X := by
+      simp [monoidalComp, braiding_tensor_right, braiding_inv_tensor_left]
+    _ = _ := by
+      rw [braiding_naturality_right, ← braiding_inv_naturality_right]
+      simp [monoidalComp]
+
+theorem evaluation_coevaluation_braided' [inst : ExactPairing X Y] :
+    (η_ X Y ≫ (β_ Y X).inv) ▷ Y ≫ (α_ Y X Y).hom ≫ Y ◁ ((β_ X Y).hom ≫ ε_ X Y) =
+      (λ_ Y).hom ≫ (ρ_ Y).inv := by
+  rw [Iso.eq_comp_inv, ← Iso.inv_comp_eq_id]
+  calc
+    _ = 𝟙 Y ⊗≫ η_ X Y ▷ Y ⊗≫ ((β_ Y X).inv ▷ Y ⊗≫ Y ◁ (β_ X Y).hom) ≫ Y ◁ ε_ X Y ⊗≫ 𝟙 Y := by
+      coherence
+    _ = 𝟙 Y ⊗≫ η_ X Y ▷ Y ⊗≫ (𝟙 ((X ⊗ Y) ⊗ Y) ⊗≫ X ◁ (β_ Y Y).hom ⊗≫ (β_ X Y).hom ▷ Y
+        ⊗≫ Y ◁ (β_ Y X).inv ⊗≫ (β_ Y Y).inv ▷ X ⊗≫ 𝟙 (Y ⊗ Y ⊗ X)) ⊗≫ Y ◁ ε_ X Y ⊗≫ 𝟙 Y := by
+      congr 3
+      all_goals simp [monoidalComp]
+      iterate 2 rw [← IsIso.eq_inv_comp]
+      repeat rw [← assoc]
+      iterate 4 rw [← IsIso.comp_inv_eq]
+      simpa using (yang_baxter Y X Y).symm
+    _ = 𝟙 Y ⊗≫ (η_ X Y ▷ Y ≫ (β_ (X ⊗ Y) Y).hom) ⊗≫ ((β_ Y (Y ⊗ X)).inv ≫ Y ◁ ε_ X Y) ⊗≫ 𝟙 Y := by
+      simp [monoidalComp, braiding_tensor_left, braiding_inv_tensor_right]
+    _ = _ := by
+      rw [braiding_naturality_left, ← braiding_inv_naturality_left]
+      simp [monoidalComp]
+
+def exactPairing_braided (X Y : C) [ExactPairing X Y] : ExactPairing Y X where
+  coevaluation' := η_ X Y ≫ (β_ Y X).inv
+  evaluation' := (β_ X Y).hom ≫ ε_ X Y
+  coevaluation_evaluation' := coevaluation_evaluation_braided'
+  evaluation_coevaluation' := evaluation_coevaluation_braided'
+
+def leftDualOfRightDual [HasRightDual X] : HasLeftDual X where
+  leftDual := Xᘁ
+  exact := exactPairing_braided X Xᘁ
+
+def rightDualOfLeftDual [HasLeftDual X] : HasRightDual X where
+  rightDual := ᘁX
+  exact := exactPairing_braided ᘁX X
+
+instance leftRigidCategoryOfRightRigidCategory [RightRigidCategory C] : LeftRigidCategory C where
+  leftDual X := leftDualOfRightDual (X := X)
+
+instance rightRigidCategoryOfLeftRigidCategory [LeftRigidCategory C] : RightRigidCategory C where
+  rightDual X := rightDualOfLeftDual (X := X)
+
+instance rigidCategoryOfRightRigidCategory [RightRigidCategory C] : RigidCategory C where
+  rightDual := inferInstance
+  leftDual := inferInstance
+
+instance rigidCategoryOfLeftRigidCategory [LeftRigidCategory C] : RigidCategory C where
+  rightDual := inferInstance
+  leftDual := inferInstance
+
+#synth BraidedCategory (FGModuleCat k)
+
+#synth LeftRigidCategory (FGModuleCat k)
+#synth RightRigidCategory (FGModuleCat k)
+#synth RigidCategory (FGModuleCat k)
+
+#synth LeftRigidCategory (FdRep k G)
+#synth RightRigidCategory (FdRep k G)
+#synth RigidCategory (FdRep k G)
+
+end BraidedCategory
+
+end FdTodo2
+
+--------------------------------------------------------------------------------------------
+
+section FdTodo3
+
+variable {C : Type u} [Category C] [MonoidalCategory C] [BraidedCategory C] {X Y : C}
+
+/-
+[ ] `FdRep k G` has all finite colimits.
+  Note: Probably want to show that (FGModuleCat k) has finite colimits (and abelian below).
+  See "RepresentationTheory/Action/Limits.lean" about this
+  Useful: "Algebra/Category/ModuleCat/Colimits.lean"
+
+By a theorem, we want to show that it has coproducts and coequalizers.
+-/
+
+#check limitSubobjectProduct_mono
+#check FGModuleCat.instHasFiniteLimits
+
+variable (G : Type u) [AddCommGroup G]
+variable (k : Type*) [Field k]
+
+#check ModuleCat.hasLimits'
+#synth HasLimits (ModuleCat k)
+#synth HasLimits AddCommGrp
+#synth HasFiniteLimits (ModuleCat k)
+#synth HasLimits AddCommGrp
+#synth HasColimits AddCommGrp
+#check AddCommGrp.instHasColimitsOfSize
+/- set_option synthInstance.maxHeartbeats 80000 in -/
+/- #synth HasLimitsOfShape WalkingParallelPair (ModuleCat k) -/
+
+-- this is fully faithful, so reflects limits and colimits
+#check (fullSubcategoryInclusion _ : FGModuleCat k ⥤ ModuleCat k)
+#synth (fullSubcategoryInclusion _ : FGModuleCat k ⥤ ModuleCat k).Full
+#synth (fullSubcategoryInclusion _ : FGModuleCat k ⥤ ModuleCat k).Faithful
+#check ReflectsLimits
+#check PreservesLimits
+#synth ReflectsLimits (fullSubcategoryInclusion _ : FGModuleCat k ⥤ ModuleCat k)
+#synth ReflectsColimits (fullSubcategoryInclusion _ : FGModuleCat k ⥤ ModuleCat k)
+
+#check CategoryTheory.Adjunction.hasLimitsOfShape_of_equivalence
+#check CategoryTheory.Limits.hasLimitsOfShape_of_equivalence
+-- so (co-)limits in ModuleCat k -> (co-)limits in FGModuleCat k
+
+#synth HasEqualizers (FGModuleCat k)
+
+#check FGModuleCat.instHasFiniteLimits
+#check hasFiniteProducts_of_hasFiniteLimits
+#check FGModuleCat.instHasLimitsOfShapeOfFinCategory WalkingParallelPair
+
+#check CreatesLimit
+
+end FdTodo3
+
 --------------------------------------------------------------------------------------------
 
 section help_me_consequence
 
-/- Massive TODO: Define FdRep.ρ.asModule, or at least alias it -/
+set_option linter.unusedVariables false in
+theorem CategoryTheory.simple_iff {C : Type u}  {X : C} [HasZeroMorphisms C] :
+    Simple X ↔ ∀ (Y) (f : Y ⟶ X) [inst : Mono f], IsIso f ↔ f ≠ 0 := by
+  constructor <;> intro hX
+  · cases hX; tauto
+  · exact Simple.mk @hX
 
+/- Massive TODO: Define FdRep.ρ.asModule, or at least alias it -/
 abbrev FdRep.asModule (V : FdRep k G) := V.toRep.ρ.asModule
 
+#check FdRep
 theorem FdRep.simple_iff_simple_toRep {V : FdRep k G} : Simple V ↔ Simple V.toRep := by
-  sorry
+  simp_rw [simple_iff]
+  constructor <;> intro h W f f_mono
+  · done
+  · specialize h W.toRep
+    let f : W.ρ.asModule →ₗ[k⟦G⟧] V.ρ.asModule := f
+    let f' : W.toRep ⟶ V.toRep := f
 
 theorem FdRep.simple_iff {V : FdRep k G} : Simple V ↔ IsSimpleModule k⟦G⟧ V.asModule :=
   simple_iff_simple_toRep.trans Rep.simple_iff
@@ -241,6 +497,21 @@ theorem cyc_rep_irreducible : Simple (_root_.cyc_rep hn hζ) :=
   FdRep.rank_one_is_simple_yay _ <| finrank_self k
 
 end tada
-@grhkm21
-Comment
 
+--------------------------------------------------------------------------------------------
+
+section random
+
+universe w w'
+-- I want to prove that FGModuleCat R doesn't have all finite colimits when R is not Noetherian
+variable {R : Type u} [Ring R]
+
+example (hR : ¬IsNoetherianRing R) : ¬HasFiniteLimits (FGModuleCat R) := by
+  intro hR_limits
+
+-- Quotient modules are finitely generated
+variable {R : Type u} [Ring R] (M : Type u) [AddCommGroup M] [Module R M] (N : Submodule R M)
+example (hM : Module.Finite R M) : Module.Finite R (M ⧸ N) := by
+  exact Finite.quotient R N
+
+end random

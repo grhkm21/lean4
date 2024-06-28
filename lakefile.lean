@@ -1,13 +1,11 @@
 import Lake
 open Lake DSL
 
-package «lean4» {
-  -- add package configuration options here
-}
+package «lean4» where
+  moreServerOptions := #[⟨`autoImplicit, false⟩]
 
-lean_lib «Lean4» {
-  -- add library configuration options here
-}
+lean_lib «Lean4» where
+
 
 require mathlib from git
   "https://github.com/leanprover-community/mathlib4.git"
