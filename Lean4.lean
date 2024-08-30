@@ -1,1 +1,1 @@
-def hello := "world"
+import Lean4.cp6

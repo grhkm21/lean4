@@ -3,66 +3,18 @@ import Mathlib.Algebra.Category.Grp.Colimits
 import Mathlib.Algebra.Category.ModuleCat.Colimits
 import Mathlib.CategoryTheory.Limits.Constructions.LimitsOfProductsAndEqualizers
 
--- Kind of just importing everything
-
--- Goal: Reprove that MonCat has colimits by constructing equivalence between MonCat and
--- category of finitely supported functions, or something
-
 open scoped DirectSum
 open FiniteDimensional Function Set
 open CategoryTheory Category Limits Preadditive
 
-section CoprodResult
-
--- TODO: Figure out why `J : Type u` doesn't work
-universe u v w
-variable
-  {J : Type} [DecidableEq J] [SmallCategory J]
-  (F : J ⥤ AddCommGrp.{u}) {G H : AddCommGrp} (f g : G ⟶ H)
-  {α : Type u} [DecidableEq α] (ι : α → J)
-
-def cocone_coprod : Cocone (Discrete.functor F.obj) where
-  pt := AddCommGrp.of (⨁ j, F.obj j)
-  ι := Discrete.natTrans fun ⟨j⟩ ↦ DirectSum.of (fun j ↦ ↥(F.obj j)) j
-
-def cocone_coprod' : Cocone (Discrete.functor (F.obj ∘ ι)) where
-  pt := AddCommGrp.of (⨁ j, (F.obj ∘ ι) j)
-  ι := Discrete.natTrans fun ⟨j⟩ ↦ DirectSum.of (fun j ↦ (F.obj ∘ ι) j) j
-
-def cocone_coprod_isColimit : IsColimit (cocone_coprod F) where
-  desc := fun s ↦ DirectSum.toAddMonoid <| fun j ↦ s.ι.app (Discrete.mk j)
-  fac := fun _ ⟨_⟩ ↦ by ext _; simp [cocone_coprod]
-  uniq := fun s m hm ↦ by
-    ext t
-    convert DirectSum.toAddMonoid.unique _ _
-    ext j
-    simp [← hm, cocone_coprod]
-    infer_instance
-
-def cocone_coprod_isColimit' : IsColimit (cocone_coprod' F ι) where
-  desc := fun s ↦ DirectSum.toAddMonoid <| fun j ↦ s.ι.app (Discrete.mk j)
-  fac := fun _ ⟨_⟩ ↦ by ext; simp [cocone_coprod']
-  uniq := fun s m hm ↦ by
-    ext t
-    convert DirectSum.toAddMonoid.unique _ _
-    ext j
-    simp [← hm, cocone_coprod']
-    infer_instance
-
-noncomputable def coprodEquivDirectSum : ∐ F.obj ≅ AddCommGrp.of (⨁ j, F.obj j) :=
-  (colimit.isColimit _).coconePointUniqueUpToIso (cocone_coprod_isColimit F)
-
-noncomputable def coprodEquivDirectSum' : ∐ F.obj ∘ ι ≅ AddCommGrp.of (⨁ j, (F.obj ∘ ι) j) :=
-  (colimit.isColimit _).coconePointUniqueUpToIso (cocone_coprod_isColimit' F ι)
-
-end CoprodResult
-
-
+universe w v u u'
 
 section CoequalizerResult
 
-universe u
-variable {G H : AddCommGrp.{u}} (f g : G ⟶ H)
+variable
+  {J : Type u} [Category.{v} J] [DecidableEq J] (F : J ⥤ AddCommGrp.{max u v w})
+  {α : Type u'} [DecidableEq α] (ι : α → J)
+  {G H : AddCommGrp.{u'}} (f g : G ⟶ H)
 
 open Group AddSubgroup QuotientAddGroup
 -- I need this cuz .mk' gives a →+ and type checker doesn't like it in place of ⟶
@@ -115,12 +67,9 @@ end CoequalizerResult
 
 section ColimitResult
 
-universe u v
-variable {J : Type} [DecidableEq J] [SmallCategory J] (F : J ⥤ AddCommGrp)
-variable [∀ X Y : J, DecidableEq (X ⟶ Y)]
-
--- First map (coproduct map)
-#check HasCoproduct
+variable
+  {J : Type u} [Category.{v} J] [DecidableEq J] (F : J ⥤ AddCommGrp.{max u v})
+  [∀ X Y : J, DecidableEq (X ⟶ Y)]
 
 noncomputable abbrev f₁ :
     AddCommGrp.of (⨁ (f : Σ p : J × J, p.fst ⟶ p.snd), F.obj f.fst.fst)
@@ -149,33 +98,21 @@ noncomputable def buildColimit_pt_iso :
     (buildColimit F).pt ≅ AddCommGrp.of ((⨁ j, F.obj j) ⧸ (f₁ F - f₂ F).range) :=
   coequalizerEquiv _ _
 
-theorem buildColimit_pt_coequalizer (s : Cocone F) :
+theorem buildColimit_desc (s : Cocone F) :
     f₁ F ≫ (DirectSum.toAddMonoid s.ι.app : _ ⟶ s.pt) = f₂ F ≫ DirectSum.toAddMonoid s.ι.app := by
   apply DirectSum.addHom_ext'
   intro ⟨⟨p₁, p₂⟩, (fp : p₁ ⟶ p₂)⟩
-  ext (x : F.obj p₁)
-  simp [f₁, f₂]
-  rw [← s.w fp]
+  ext
+  let hs (x) : (s.ι.app p₂) ((F.map fp) x) = (s.ι.app p₁ x) := congrArg (fun f ↦ f x) (s.w fp)
+  simpa [f₁, f₂] using hs _
 
-#check Cocone
-#check Cofork
-#check CokernelCofork
-def buildIsColimit : IsColimit (buildColimit F) where
-  desc := fun s ↦ by
-    -- TODO: Just prove that s.pt is a coequalizer of f₁ and f₂
-    refine (coequalizerEquiv _ _).hom ≫ ?_
-    simp
-    apply QuotientAddGroup.lift _ (DirectSum.toAddMonoid s.ι.app)
-    rw [AddMonoidHom.range_le_ker_iff]
-    change (f₁ F - f₂ F) ≫ (DirectSum.toAddMonoid s.ι.app : _ ⟶ s.pt) = 0
-    rw [Preadditive.sub_comp, sub_eq_zero]
-    ext (t : ⨁ (f : Σ p : J × J, p.fst ⟶ p.snd), F.obj f.fst.fst)
-    simp [f₁, f₂]
-  fac := _
-  uniq := _
+noncomputable def buildIsColimit : IsColimit (buildColimit F) where
+  desc s := coequalizer.desc (DirectSum.toAddMonoid s.ι.app) (buildColimit_desc F s)
+  fac s j := by ext; simp [buildColimit]
+  uniq s m hm := coequalizer.hom_ext <| DirectSum.addHom_ext' <| fun j ↦ by
+    ext t; simp [buildColimit, coequalizer.π_desc, ← hm j]
 
-example {β : Type u} {ι : Sort v} [Finite ι] (p : ι → β → Prop)
-    (h : ∀ i : ι, {x : β | p i x}.Finite) : {x : β | ∃ i : ι, p i x}.Finite :=
-  (Set.setOf_exists _).symm ▸ Set.finite_iUnion h
+noncomputable def colimitEquiv : colimit F ≅ AddCommGrp.of ((⨁ j, F.obj j) ⧸ (f₁ F - f₂ F).range) :=
+  ((colimit.isColimit F).coconePointUniqueUpToIso (buildIsColimit F)) ≪≫ buildColimit_pt_iso F
 
 end ColimitResult

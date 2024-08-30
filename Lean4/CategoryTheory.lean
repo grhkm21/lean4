@@ -1,8 +1,11 @@
+import Mathlib.Algebra.Category.Grp.Abelian
 import Mathlib.CategoryTheory.FintypeCat
 import Mathlib.CategoryTheory.Closed.Cartesian
 import Mathlib.CategoryTheory.Functor.Currying
 
-open CategoryTheory Category Opposite Prod
+open CategoryTheory Category Opposite Prod Limits
+
+section part1
 
 variable {C D : Type*} [Category C] [Category D] {X Y : C} {F G : C ⥤ D}
 theorem prod_type_eq {x y : C} {w z : D} : ((x ⟶ y) × (w ⟶ z)) = ((x, w) ⟶ (y, z)) := rfl
@@ -140,3 +143,19 @@ def amelia_2 : 𝟚 ⥤ C ≃ (Σ c d : C, c ⟶ d) where
       | 1, 1 => simp [show F = 𝟙 1 by rfl]
   right_inv := fun ⟨c, d, F⟩ ↦ by simp
 
+end part1
+
+section part2
+
+variable {C : Type*} [Category C] [Abelian C] {X Y : C} (f g h : X ⟶ Y)
+
+noncomputable def coequalizerIsoShift : coequalizer f g ≅ coequalizer (f + h) (g + h) := by
+  let π₁ := coequalizer.π f g
+  let π₂ := coequalizer.π (f + h) (g + h)
+  have h₁ : f ≫ π₂ = g ≫ π₂ := by simpa using coequalizer.condition (f + h) (g + h)
+  have h₂ : (f + h) ≫ π₁ = (g + h) ≫ π₁ := by simpa using coequalizer.condition f g
+  refine ⟨coequalizer.desc π₂ h₁, coequalizer.desc π₁ h₂,
+    coequalizer.hom_ext ?_, coequalizer.hom_ext ?_⟩
+  all_goals simp [← assoc, coequalizer.π_desc π₂ h₁, coequalizer.π_desc π₁ h₂]
+
+end part2
